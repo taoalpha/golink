@@ -114,3 +114,29 @@ PORT=8443 TLS=1 bun --watch src/index.ts
 ## Notes
 - If port 443 is taken (e.g., Tailscale serve), free it or use port-forwarding/another port.
 - Self-signed certs always warn until trusted; for a smoother experience, consider mkcert or Caddy (not included here).
+
+## Using a Custom Hostname
+
+You can use any hostname instead of `go` (e.g., `g`, `link`, etc.). No code changes required.
+
+1) Update `/etc/hosts`:
+```bash
+sudo sh -c 'echo "127.0.0.1 g" >> /etc/hosts'
+```
+
+Or replace the existing entry:
+```bash
+sudo sed -i '' 's/127.0.0.1 go/127.0.0.1 g/' /etc/hosts
+```
+
+2) If using HTTPS, regenerate the cert with the new hostname:
+```bash
+openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 3650 \
+  -keyout ./tls/key.pem -out ./tls/cert.pem \
+  -subj "/CN=g" -addext "subjectAltName=DNS:g"
+
+# Trust it (macOS)
+security add-trusted-cert -k ~/Library/Keychains/login.keychain-db ./tls/cert.pem
+```
+
+**Trade-off**: Shorter names like `g` save keystrokes but may conflict with other tools. `go` is semantic ("go to X") and unlikely to collide.
