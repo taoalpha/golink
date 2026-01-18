@@ -708,7 +708,7 @@ const TLS_KEY_PATH = Bun.env.TLS_KEY_PATH ?? new URL("./tls/key.pem", import.met
 
 const shouldUseTls = Bun.env.TLS === "1";
 
-Bun.serve({
+const mainServer = Bun.serve({
   port,
   tls: shouldUseTls
     ? {
@@ -855,4 +855,18 @@ Bun.serve({
   },
 });
 
-console.log(`GoLinks running on http://localhost:${port}`);
+// If TLS is enabled, also start an HTTP server on port 80 that redirects to HTTPS
+if (shouldUseTls) {
+  const httpPort = Number(Bun.env.HTTP_PORT ?? "80");
+  Bun.serve({
+    port: httpPort,
+    fetch(request) {
+      const url = new URL(request.url);
+      const httpsUrl = `https://${url.host}${url.pathname}${url.search}`;
+      return Response.redirect(httpsUrl, 301);
+    },
+  });
+  console.log(`GoLinks running on https://localhost:${port} (HTTP redirect on port ${httpPort})`);
+} else {
+  console.log(`GoLinks running on http://localhost:${port}`);
+}
