@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, recordVisit } from "./db";
 import { renderDashboard, renderEditPage, redirectToEdit } from "./handlers";
 import {
   normalizeSlug,
@@ -138,10 +138,11 @@ function handleRedirect(pathname: string): Response {
   }
 
   const exact = db
-    .query("SELECT url FROM links WHERE slug = ? AND is_template = 0")
-    .get(slug) as { url: string } | undefined;
+    .query("SELECT slug, url FROM links WHERE slug = ? AND is_template = 0")
+    .get(slug) as { slug: string; url: string } | undefined;
 
   if (exact?.url) {
+    recordVisit(slug, exact.slug, "exact");
     return Response.redirect(exact.url, 302);
   }
 
@@ -158,6 +159,7 @@ function handleRedirect(pathname: string): Response {
     if (match && match.groups) {
       const destination = applyTemplate(template.url, match.groups);
       if (destination) {
+        recordVisit(slug, template.slug, "template");
         return Response.redirect(destination, 302);
       }
     }
@@ -169,10 +171,12 @@ function handleRedirect(pathname: string): Response {
       continue;
     }
     if (slug === root && template.default_url) {
+      recordVisit(slug, template.slug, "default");
       return Response.redirect(template.default_url, 302);
     }
   }
 
+  recordVisit(slug, null, "miss");
   return redirectToEdit(slug);
 }
 

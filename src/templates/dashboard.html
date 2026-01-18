@@ -225,6 +225,48 @@
             padding: 2.5rem 1rem;
         }
 
+        .stat-total {
+            font-weight: 600;
+        }
+
+        .stat-breakdown {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .stat-template {
+            color: #2563eb;
+        }
+
+        .stat-default {
+            color: #7c3aed;
+        }
+
+        .text-muted {
+            color: var(--text-muted);
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 2.5rem 0 1rem;
+            color: var(--text-ink);
+        }
+
+        .card-secondary {
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(31, 42, 55, 0.05);
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .card-secondary th,
+        .card-secondary td {
+            padding: 0.8rem 1.2rem;
+        }
+
         @media (max-width: 700px) {
             .layout { padding: 2.5rem 1.2rem; }
             .brand { font-size: 2.1rem; }
@@ -252,6 +294,7 @@
                         <tr>
                             <th>Key</th>
                             <th>Destination</th>
+                            <th>Hits</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -261,6 +304,23 @@
                 </table>
             </div>
         </main>
+
+        <h2 class="section-title">Missed Links</h2>
+        <div class="card card-secondary">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Slug</th>
+                            <th>Attempts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{missRows}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </body>
 </html>

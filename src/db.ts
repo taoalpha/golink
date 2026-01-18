@@ -45,3 +45,64 @@ export type LinkRow = {
   default_url: string | null;
   is_template: number;
 };
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL,
+    link_slug TEXT,
+    visit_type TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.run(`CREATE INDEX IF NOT EXISTS visits_slug_idx ON visits (slug);`);
+db.run(`CREATE INDEX IF NOT EXISTS visits_link_slug_idx ON visits (link_slug);`);
+db.run(`CREATE INDEX IF NOT EXISTS visits_type_idx ON visits (visit_type);`);
+
+export type VisitType = "exact" | "template" | "default" | "miss";
+
+export function recordVisit(slug: string, linkSlug: string | null, visitType: VisitType): void {
+  db.query("INSERT INTO visits (slug, link_slug, visit_type) VALUES (?, ?, ?)").run(
+    slug,
+    linkSlug,
+    visitType
+  );
+}
+
+export type LinkStats = {
+  slug: string;
+  total: number;
+  exact: number;
+  template: number;
+  default_hits: number;
+};
+
+export function getLinkStats(): LinkStats[] {
+  return db.query(`
+    SELECT 
+      link_slug as slug,
+      COUNT(*) as total,
+      SUM(CASE WHEN visit_type = 'exact' THEN 1 ELSE 0 END) as exact,
+      SUM(CASE WHEN visit_type = 'template' THEN 1 ELSE 0 END) as template,
+      SUM(CASE WHEN visit_type = 'default' THEN 1 ELSE 0 END) as default_hits
+    FROM visits 
+    WHERE link_slug IS NOT NULL
+    GROUP BY link_slug
+  `).all() as LinkStats[];
+}
+
+export type MissStats = {
+  slug: string;
+  count: number;
+};
+
+export function getMissStats(): MissStats[] {
+  return db.query(`
+    SELECT slug, COUNT(*) as count
+    FROM visits 
+    WHERE visit_type = 'miss'
+    GROUP BY slug
+    ORDER BY count DESC
+  `).all() as MissStats[];
+}
