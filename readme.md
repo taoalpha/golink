@@ -13,6 +13,18 @@ A minimal Bun + SQLite go link system with variable patterns, defaults, and a bu
 - Bun (runtime)
 - macOS/Linux host file access
 
+## Project Structure
+```
+src/
+├── index.ts       - Server entry point and routing
+├── db.ts          - SQLite database setup
+├── handlers.ts    - Page rendering functions
+├── utils.ts       - Utility functions
+└── templates/
+    ├── dashboard.html
+    └── edit.html
+```
+
 ## Quick Start (HTTP)
 1) Map `go` to localhost:
 ```bash
@@ -21,7 +33,7 @@ sudo sh -c 'echo "127.0.0.1 go" >> /etc/hosts'
 
 2) Start the server (HTTP):
 ```bash
-bun run index.ts
+bun run src/index.ts
 ```
 
 3) Open the dashboard:
@@ -31,7 +43,7 @@ http://go:8787/_/
 
 Set `PORT=80` for `http://go/` (requires sudo):
 ```bash
-sudo PORT=80 bun run index.ts
+sudo PORT=80 bun run src/index.ts
 ```
 
 ## Quick Start (HTTPS, self-signed)
@@ -45,7 +57,7 @@ openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 3650 \
 
 2) Run HTTPS (non-privileged port):
 ```bash
-PORT=8443 TLS=1 bun run index.ts
+PORT=8443 TLS=1 bun run src/index.ts
 ```
 Then visit `https://go:8443/_/` (browser will warn because it’s self-signed).
 
@@ -59,7 +71,7 @@ security add-trusted-cert -k ~/Library/Keychains/login.keychain-db ./tls/cert.pe
 You need either port 443 or a port forward:
 - **Bind 443 directly (requires sudo, frees the port first):**
   ```bash
-  sudo PORT=443 TLS=1 bun run index.ts
+  sudo PORT=443 TLS=1 bun run src/index.ts
   ```
 - **Port-forward 443 -> 8443 using PF (macOS):**
   1. Create anchor `/etc/pf.anchors/golink`:
@@ -93,7 +105,7 @@ EOF'
 ## Hot Reload
 Use Bun watch mode during development:
 ```bash
-PORT=8443 TLS=1 bun --watch index.ts
+PORT=8443 TLS=1 bun --watch src/index.ts
 ```
 
 ## Logs

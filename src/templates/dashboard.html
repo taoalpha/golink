@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoLinks</title>
+    <style>
+        :root {
+            --bg-paper: #f7f4ef;
+            --surface: #ffffff;
+            --text-ink: #1f2a37;
+            --text-muted: #6b7280;
+            --accent-ember: #c26a4a;
+            --accent-ember-dark: #a95539;
+            --border-light: #ebe7e2;
+            --focus-ring: 0 0 0 3px rgba(194, 106, 74, 0.2);
+            --font-display: "Palatino Linotype", Palatino, "Book Antiqua", serif;
+            --font-ui: "Trebuchet MS", "Gill Sans", "Gill Sans MT", sans-serif;
+            --shadow-card: 0 18px 40px rgba(31, 42, 55, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-paper);
+            color: var(--text-ink);
+            font-family: var(--font-ui);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            background-image:
+                radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+            background-size: 22px 22px, 12px 12px;
+            background-position: 0 0, 6px 8px;
+        }
+
+        .layout {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3.5rem 1.5rem 4.5rem;
+        }
+
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .brand {
+            font-family: var(--font-display);
+            font-size: 2.6rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 0.4rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.65rem 1.3rem;
+            border-radius: 999px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.02em;
+            border: 0;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-ember);
+            color: #fff;
+            box-shadow: 0 12px 24px rgba(194, 106, 74, 0.28);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-ember-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn:focus {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 18px;
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .message-box {
+            background: #fff8f3;
+            border-left: 4px solid var(--accent-ember);
+            color: var(--accent-ember-dark);
+            padding: 0.9rem 1.2rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            display: none;
+        }
+        .message-box:not(:empty) { display: block; }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            font-family: var(--font-display);
+            font-weight: 700;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 1.2rem 1.6rem 1rem;
+            border-bottom: 1px solid var(--border-light);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        td {
+            padding: 1.2rem 1.6rem;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.98rem;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background-color: #fcfbf9; }
+
+        a {
+            color: var(--accent-ember);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        a:hover {
+            color: var(--accent-ember-dark);
+            text-decoration: underline;
+        }
+
+        td:first-child {
+            font-family: "Courier New", Courier, monospace;
+            font-weight: 700;
+        }
+
+        .hint {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.35rem;
+        }
+
+        form {
+            margin: 0;
+        }
+
+        .action-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .btn-link {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            padding: 0;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .btn-link:hover {
+            color: var(--accent-ember-dark);
+            text-decoration: underline;
+        }
+
+        .badge-variable {
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            font-size: 0.65em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            line-height: 1;
+            padding: 4px 8px;
+            margin-left: 10px;
+            border-radius: 999px;
+            color: var(--accent-ember);
+            border: 1px solid var(--accent-ember);
+            background-color: transparent;
+            opacity: 0.9;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .badge-variable:hover {
+            background-color: var(--accent-ember);
+            color: white;
+            opacity: 1;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2.5rem 1rem;
+        }
+
+        @media (max-width: 700px) {
+            .layout { padding: 2.5rem 1.2rem; }
+            .brand { font-size: 2.1rem; }
+            th, td { padding: 1rem; }
+            td:nth-child(2) { min-width: 220px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <header class="header">
+            <div>
+                <h1 class="brand">GoLinks</h1>
+                <div class="subtitle">Fast redirects for your personal shortcuts.</div>
+            </div>
+            <a href="/_/edit/" class="btn btn-primary">Create New</a>
+        </header>
+
+        <div class="message-box">{{message}}</div>
+
+        <main class="card">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Destination</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{rows}}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

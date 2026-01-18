@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Link</title>
+    <style>
+        :root {
+            --bg-paper: #f7f4ef;
+            --surface: #ffffff;
+            --text-ink: #1f2a37;
+            --text-muted: #6b7280;
+            --accent-ember: #c26a4a;
+            --accent-ember-dark: #a95539;
+            --border-light: #ebe7e2;
+            --focus-ring: 0 0 0 3px rgba(194, 106, 74, 0.2);
+            --font-display: "Palatino Linotype", Palatino, "Book Antiqua", serif;
+            --font-ui: "Trebuchet MS", "Gill Sans", "Gill Sans MT", sans-serif;
+            --shadow-card: 0 18px 40px rgba(31, 42, 55, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-paper);
+            color: var(--text-ink);
+            font-family: var(--font-ui);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image:
+                radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+            background-size: 22px 22px, 12px 12px;
+            background-position: 0 0, 6px 8px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 560px;
+            padding: 2rem 1.5rem;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .nav-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-ember);
+            text-decoration: underline;
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            margin: 0 0 0.5rem 0;
+            color: var(--text-ink);
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin: 0 0 2rem 0;
+            font-size: 0.95rem;
+        }
+
+        .message-box {
+            background: #fff4ec;
+            border-left: 4px solid var(--accent-ember);
+            color: var(--accent-ember-dark);
+            padding: 0.9rem 1.2rem;
+            border-radius: 10px;
+            margin-bottom: 1.8rem;
+            font-size: 0.95rem;
+            display: none;
+        }
+        .message-box:not(:empty) { display: block; }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            margin-bottom: 0.6rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .prefix {
+            position: absolute;
+            left: 1rem;
+            color: var(--text-muted);
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1rem;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            font-size: 1rem;
+            border: 2px solid var(--border-light);
+            border-radius: 12px;
+            background: #ffffff;
+            transition: all 0.2s ease;
+            font-family: "Courier New", Courier, monospace;
+            color: var(--text-ink);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        #slug { padding-left: 3.2rem; }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-ember);
+            background: #fff;
+            box-shadow: var(--focus-ring);
+        }
+
+        input:disabled {
+            background-color: #f0ede8;
+            color: #a0a0a0;
+            border-color: #e0ddd8;
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: none;
+            filter: grayscale(1);
+        }
+
+        .hint {
+            margin-top: 0.6rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn-save {
+            flex: 1;
+            padding: 0.85rem 1.5rem;
+            border-radius: 999px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            background-color: var(--accent-ember);
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+            box-shadow: 0 14px 28px rgba(194, 106, 74, 0.25);
+        }
+
+        .btn-save:hover {
+            background-color: var(--accent-ember-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-save:focus {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        @media (max-width: 600px) {
+            .card { padding: 2rem; }
+            h1 { font-size: 1.7rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <main class="card">
+            <a href="/_/" class="nav-link">Back to Dashboard</a>
+
+            <h1>Configure Link</h1>
+            <p class="subtitle">Set where this shortlink should take you.</p>
+
+            <div class="message-box">{{message}}</div>
+
+            <form action="/_/save" method="POST">
+                <div class="form-group">
+                    <label for="slug">Short Key</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">go/</span>
+                        <input type="text" id="slug" name="slug" value="{{slug}}" required autofocus placeholder="meet" autocomplete="off">
+                    </div>
+                    <div class="hint">Use {name} placeholders for variable links.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="url">Destination URL</label>
+                    <input type="url" id="url" name="url" value="{{url}}" required placeholder="https://...">
+                </div>
+
+                <div class="form-group">
+                    <label for="default_url">Default URL</label>
+                    <input type="url" id="default_url" name="default_url" value="{{defaultUrl}}" placeholder="https://..." {{defaultUrlDisabled}}>
+                    <div class="hint">{{defaultUrlHint}}</div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn-save">Save Link</button>
+                </div>
+            </form>
+        </main>
+    </div>
+</body>
+</html>
