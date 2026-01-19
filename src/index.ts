@@ -191,6 +191,18 @@ async function handleSave(request: Request, domain: string): Promise<Response> {
     return renderEditPage(formDomain, rawSlug, rawUrl, rawDefaultUrl, "Slug cannot start with _/.", domains);
   }
 
+  if (!/^[A-Za-z0-9_\-{}\/]+$/.test(rawSlug)) {
+    const domains = getDomains();
+    return renderEditPage(
+      formDomain,
+      rawSlug,
+      rawUrl,
+      rawDefaultUrl,
+      "Slug may include letters, numbers, '-', '_', '/', and template braces {}.",
+      domains
+    );
+  }
+
   let parsedUrl: URL | null = null;
   try {
     parsedUrl = new URL(rawUrl);

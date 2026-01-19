@@ -150,6 +150,11 @@
             display: block;
         }
 
+        .slug-wrapper:has(.slug-input:valid:not(:placeholder-shown)) ~ .default-url-hint {
+            color: var(--text-muted);
+        }
+
+
         .domain-select {
             appearance: none;
             border: none;
@@ -247,6 +252,16 @@
             box-shadow: var(--focus-ring);
         }
 
+        .label-note {
+            text-transform: none;
+            letter-spacing: normal;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+            font-size: 0.8em;
+            font-style: italic;
+        }
+
         @media (max-width: 600px) {
             .card { padding: 2rem; }
             h1 { font-size: 1.7rem; }
@@ -263,7 +278,7 @@
 
             <div class="message-box">{{message}}</div>
 
-            <form action="/_/save" method="POST">
+            <form action="/_/save" method="POST" class="default-url-wrap">
                 <div class="form-group">
                     <label for="slug">
                         Short Key
@@ -286,9 +301,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="default_url">Default URL</label>
-                    <input type="url" id="default_url" name="default_url" value="{{defaultUrl}}" placeholder="https://..." {{defaultUrlDisabled}}>
-                    <div class="hint">{{defaultUrlHint}}</div>
+                    <label for="default_url">
+                        Default URL
+                        <span class="label-note">Use only with {param} slugs</span>
+                    </label>
+                    <input type="url" id="default_url" name="default_url" value="{{defaultUrl}}" placeholder="https://..." class="default-url-input" {{defaultUrlDisabled}}>
+                    <div class="hint default-url-hint" id="default-url-hint">{{defaultUrlHint}}</div>
                 </div>
 
                 <div class="btn-group">
@@ -297,5 +315,21 @@
             </form>
         </main>
     </div>
+    <script>
+        (function() {
+            var slugInput = document.getElementById('slug');
+            var defaultUrlInput = document.getElementById('default_url');
+            if (slugInput && defaultUrlInput) {
+                var updateState = function() {
+                    var value = slugInput.value || '';
+                    var hasTemplate = /\{[^}]+\}/.test(value);
+                    var isValid = slugInput.checkValidity();
+                    defaultUrlInput.disabled = !(hasTemplate && isValid);
+                };
+                slugInput.addEventListener('input', updateState);
+                updateState();
+            }
+        })();
+    </script>
 </body>
 </html>

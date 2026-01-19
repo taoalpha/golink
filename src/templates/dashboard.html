@@ -211,12 +211,43 @@
             opacity: 0.9;
             cursor: help;
             transition: all 0.2s ease;
+            position: relative;
         }
 
         .badge-variable:hover {
             background-color: var(--accent-ember);
             color: white;
             opacity: 1;
+        }
+
+        .badge-variable::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(0);
+            background-color: var(--text-ink);
+            color: var(--surface);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-weight: 500;
+            text-transform: none;
+            letter-spacing: normal;
+            z-index: 100;
+        }
+
+        .badge-variable:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-4px);
         }
 
         .event-pill {

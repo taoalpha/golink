@@ -39,14 +39,17 @@ export function renderDashboard(domain: string, message: string): Response {
       const displaySlug = row.is_template === 1 ? (templateRoot(row.slug) ?? row.slug) : row.slug;
       const displaySlugText = escapeHtml(displaySlug);
       const fullKey = `${domainText}/${displaySlugText}`;
-      const targetHref = encodeURI(`/${displaySlug}`);
       const editHref = `/_/edit/${encodeURIComponent(row.slug)}?domain=${encodeURIComponent(row.domain)}`;
       const showsDefault = row.is_template === 1 && isTemplateSlug(row.slug);
+      const targetHref = showsDefault && defaultText
+        ? defaultText
+        : editHref;
+      const dataLinkAttr = showsDefault && defaultText ? "" : " data-edit-link=\"1\"";
       const destination = defaultText && showsDefault
         ? `${urlText}<div class="hint">Default: ${defaultText}</div>`
         : urlText;
       const badge = row.is_template === 1
-        ? '<span class="badge-variable" title="Accepts parameters">Variable</span>'
+        ? '<span class="badge-variable" title="Template link; uses variables">Variable</span>'
         : "";
 
       const linkStats = statsMap.get(`${row.domain}:${row.slug}`);
@@ -56,7 +59,7 @@ export function renderDashboard(domain: string, message: string): Response {
 
       return `
 <tr>
-  <td><a href="${targetHref}">${fullKey}</a>${badge}</td>
+  <td><a href="${targetHref}"${dataLinkAttr}>${fullKey}</a>${badge}</td>
   <td>${destination}</td>
   <td>${hitsHtml}</td>
   <td>
