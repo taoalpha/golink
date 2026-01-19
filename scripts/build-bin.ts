@@ -1,7 +1,8 @@
 import { mkdir } from "node:fs/promises"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 
-const rootDir = new URL("..", import.meta.url).pathname
+const rootDir = fileURLToPath(new URL("..", import.meta.url))
 const distDir = join(rootDir, "dist")
 const binPath = join(distDir, `golink${process.platform === "win32" ? ".exe" : ""}`)
 
