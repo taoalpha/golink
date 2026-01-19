@@ -1,4 +1,4 @@
-import { db, recordVisit } from "./db";
+import { db, recordLinkEvent, recordVisit } from "./db";
 import { renderDashboard, renderEditPage, redirectToEdit } from "./handlers";
 import {
   normalizeSlug,
@@ -114,9 +114,20 @@ async function handleSave(request: Request): Promise<Response> {
   }
 
   const templateFlag = isTemplateSlug(rawSlug) ? 1 : 0;
+  const existing = db
+    .query("SELECT url, default_url FROM links WHERE slug = ?")
+    .get(rawSlug) as { url: string; default_url: string | null } | undefined;
+
   db.query(
     "INSERT INTO links (slug, url, default_url, is_template) VALUES (?, ?, ?, ?) ON CONFLICT(slug) DO UPDATE SET url = excluded.url, default_url = excluded.default_url, is_template = excluded.is_template"
   ).run(rawSlug, rawUrl, rawDefaultUrl || null, templateFlag);
+
+  recordLinkEvent(
+    rawSlug,
+    existing ? "update" : "create",
+    rawUrl,
+    rawDefaultUrl || null
+  );
 
   return Response.redirect("/_/", 302);
 }
@@ -126,7 +137,15 @@ async function handleDelete(request: Request): Promise<Response> {
   const data = parseForm(body);
   const slug = normalizeSlug(data.slug ?? "");
   if (slug) {
+    const existing = db
+      .query("SELECT url, default_url FROM links WHERE slug = ?")
+      .get(slug) as { url: string; default_url: string | null } | undefined;
+
     db.query("DELETE FROM links WHERE slug = ?").run(slug);
+
+    if (existing) {
+      recordLinkEvent(slug, "delete", existing.url, existing.default_url);
+    }
   }
   return Response.redirect("/_/", 302);
 }

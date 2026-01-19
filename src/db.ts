@@ -106,3 +106,31 @@ export function getMissStats(): MissStats[] {
     ORDER BY count DESC
   `).all() as MissStats[];
 }
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS link_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    url TEXT,
+    default_url TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.run(`CREATE INDEX IF NOT EXISTS link_events_slug_idx ON link_events (slug);`);
+
+db.run(`CREATE INDEX IF NOT EXISTS link_events_type_idx ON link_events (event_type);`);
+
+export type LinkEventType = "create" | "update" | "delete";
+
+export function recordLinkEvent(
+  slug: string,
+  eventType: LinkEventType,
+  url: string | null,
+  defaultUrl: string | null
+): void {
+  db.query(
+    "INSERT INTO link_events (slug, event_type, url, default_url) VALUES (?, ?, ?, ?)"
+  ).run(slug, eventType, url, defaultUrl);
+}
