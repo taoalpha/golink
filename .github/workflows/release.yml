@@ -1,0 +1,72 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+          - os: ubuntu-22.04
+            target: linux-x64
+          - os: ubuntu-22.04
+            target: linux-arm64
+          - os: windows-2022
+            target: windows-x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.3.6"
+
+      - name: Build
+        run: bun run build:bin
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist-zip
+          if [[ "${{ matrix.target }}" == "windows-x64" ]]; then
+            mv dist/golink.exe dist/golink-windows-x64.exe || mv dist/golink dist/golink-windows-x64.exe
+            zip -j "dist-zip/golink-${{ matrix.target }}.zip" dist/golink-windows-x64.exe
+          else
+            mv dist/golink "dist/golink-${{ matrix.target }}"
+            zip -j "dist-zip/golink-${{ matrix.target }}.zip" dist/golink-${{ matrix.target }}
+          fi
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: golink-${{ matrix.target }}
+          path: dist-zip/golink-${{ matrix.target }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-zip
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-zip/**/golink-*.zip

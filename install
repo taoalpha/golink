@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+GoLink Installer
+
+Usage: install [options]
+
+Options:
+    -h, --help              Show this help
+    -v, --version <version> Install a specific version (e.g., 0.0.1)
+
+Examples:
+    curl -fsSL https://raw.githubusercontent.com/taoalpha/golink/master/install | bash
+    curl -fsSL https://raw.githubusercontent.com/taoalpha/golink/master/install | bash -s -- --version 0.0.1
+EOF
+}
+
+requested_version=${VERSION:-}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -v|--version)
+            if [[ -n "${2:-}" ]]; then
+                requested_version="$2"
+                shift 2
+            else
+                echo "Error: --version requires a version argument" >&2
+                exit 1
+            fi
+            ;;
+        *)
+            echo "Warning: Unknown option '$1'" >&2
+            shift
+            ;;
+    esac
+done
+
+raw_os=$(uname -s)
+os=$(echo "$raw_os" | tr '[:upper:]' '[:lower:]')
+case "$raw_os" in
+    Darwin*) os="darwin" ;;
+    Linux*) os="linux" ;;
+    MINGW*|MSYS*|CYGWIN*) os="windows" ;;
+esac
+
+arch=$(uname -m)
+if [[ "$arch" == "aarch64" ]]; then
+    arch="arm64"
+fi
+if [[ "$arch" == "x86_64" ]]; then
+    arch="x64"
+fi
+
+if [[ "$os" == "darwin" && "$arch" == "x64" ]]; then
+    rosetta_flag=$(sysctl -n sysctl.proc_translated 2>/dev/null || echo 0)
+    if [[ "$rosetta_flag" == "1" ]]; then
+        arch="arm64"
+    fi
+fi
+
+combo="$os-$arch"
+case "$combo" in
+    linux-x64|linux-arm64|darwin-x64|darwin-arm64|windows-x64)
+        ;;
+    *)
+        echo "Unsupported OS/Arch: $os/$arch" >&2
+        exit 1
+        ;;
+esac
+
+if ! command -v unzip >/dev/null 2>&1; then
+    echo "Error: 'unzip' is required but not installed." >&2
+    exit 1
+fi
+
+filename="golink-${combo}.zip"
+
+if [[ -z "$requested_version" ]]; then
+    url="https://github.com/taoalpha/golink/releases/latest/download/${filename}"
+else
+    requested_version="${requested_version#v}"
+    url="https://github.com/taoalpha/golink/releases/download/v${requested_version}/${filename}"
+fi
+
+install_dir="$HOME/.local/bin"
+mkdir -p "$install_dir"
+
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT
+
+curl -fsSL "$url" -o "$tmp_dir/$filename"
+unzip -q "$tmp_dir/$filename" -d "$tmp_dir"
+
+src="$tmp_dir/golink-${combo}"
+if [[ "$os" == "windows" ]]; then
+    src="$tmp_dir/golink-windows-x64.exe"
+fi
+
+if [[ ! -f "$src" ]]; then
+    echo "Downloaded archive does not contain expected binary: $src" >&2
+    exit 1
+fi
+
+dest="$install_dir/golink"
+if [[ "$os" == "windows" ]]; then
+    dest="$install_dir/golink.exe"
+fi
+
+mv "$src" "$dest"
+chmod 755 "$dest"
+
+echo "Installed to $dest"
+
+if [[ ":$PATH:" != *":$install_dir:"* ]]; then
+    echo "Add this to your shell profile:" >&2
+    echo "  export PATH=\"$install_dir:\$PATH\"" >&2
+fi

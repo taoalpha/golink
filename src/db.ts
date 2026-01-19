@@ -1,12 +1,15 @@
 import { Database } from "bun:sqlite";
 import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 
-const DATA_DIR = new URL("../data/", import.meta.url).pathname;
-const DB_PATH = new URL("../data/golinks.sqlite", import.meta.url).pathname;
+const modulePath = new URL(import.meta.url).pathname;
+const baseDir = modulePath.startsWith("/$bunfs/") ? process.cwd() : new URL("..", import.meta.url).pathname;
+const dataDir = Bun.env.GOLINK_DATA_DIR ?? join(baseDir, "data");
+const dbPath = join(dataDir, "golinks.sqlite");
 
-await mkdir(DATA_DIR, { recursive: true });
+await mkdir(dataDir, { recursive: true });
 
-export const db = new Database(DB_PATH);
+export const db = new Database(dbPath);
 
 db.run(`
   CREATE TABLE IF NOT EXISTS links (

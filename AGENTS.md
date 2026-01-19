@@ -19,6 +19,10 @@ Use this file to keep agentic changes safe, consistent, and low-risk.
 
 ## Build / Run / Test Commands
 
+### Build
+- Run from source: Bun runs TypeScript directly.
+- Single binary: `bun run build:bin` outputs `dist/golink`.
+
 ### Run (HTTP)
 ```bash
 bun run src/index.ts
@@ -34,9 +38,6 @@ PORT=8443 TLS=1 bun run src/index.ts
 ```bash
 PORT=8443 TLS=1 bun --watch src/index.ts
 ```
-
-### Build
-No build step defined. Bun runs TypeScript directly.
 
 ### Type check
 ```bash

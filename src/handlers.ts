@@ -13,17 +13,14 @@ import {
   templateRoot,
 } from "./utils";
 
-const DASHBOARD_HTML = await Bun.file(
-  new URL("./templates/dashboard.html", import.meta.url).pathname
-).text();
+const modulePath = new URL(import.meta.url).pathname;
+const baseDir = modulePath.startsWith("/$bunfs/")
+  ? process.cwd()
+  : new URL("..", import.meta.url).pathname;
 
-const EDIT_HTML = await Bun.file(
-  new URL("./templates/edit.html", import.meta.url).pathname
-).text();
-
-const DOMAINS_HTML = await Bun.file(
-  new URL("./templates/domains.html", import.meta.url).pathname
-).text();
+const DASHBOARD_HTML = await Bun.file(`${baseDir}/src/templates/dashboard.html`).text();
+const EDIT_HTML = await Bun.file(`${baseDir}/src/templates/edit.html`).text();
+const DOMAINS_HTML = await Bun.file(`${baseDir}/src/templates/domains.html`).text();
 
 export function renderDashboard(domain: string, message: string): Response {
   const rows = getAllLinks();

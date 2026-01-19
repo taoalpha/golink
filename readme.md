@@ -10,7 +10,7 @@ A minimal Bun + SQLite go link system with variable patterns, defaults, and a bu
 - Self-signed TLS support (optional)
 
 ## Requirements
-- Bun (runtime)
+- Bun (runtime, only for source builds)
 - macOS/Linux host file access
 
 ## Project Structure
@@ -33,7 +33,7 @@ sudo sh -c 'echo "127.0.0.1 go" >> /etc/hosts'
 
 2) Start the server (HTTP):
 ```bash
-bun run src/index.ts
+bun run src/index.ts serve --no-tls --port 8787
 ```
 
 3) Open the dashboard:
@@ -43,14 +43,55 @@ http://go:8787/_/
 
 Set `PORT=80` for `http://go/` (requires sudo):
 ```bash
-sudo PORT=80 bun run src/index.ts
+sudo bun run src/index.ts serve --no-tls --port 80
 ```
+
+## Installation
+
+**One-line install (macOS/Linux/Windows WSL)**
+```bash
+curl -fsSL https://raw.githubusercontent.com/taoalpha/golink/master/install | bash
+```
+
+**Specific version**
+```bash
+curl -fsSL https://raw.githubusercontent.com/taoalpha/golink/master/install | bash -s -- --version 0.0.1
+```
+
+## Build a Single Binary
+1) Compile a standalone binary (Bun runtime embedded):
+```bash
+bun run build:bin
+```
+
+2) Run the binary (defaults to HTTPS on port 443):
+```bash
+sudo ./dist/golink serve
+```
+Disable TLS:
+```bash
+./dist/golink serve --no-tls --port 8787
+```
+CLI flags override env vars. Available flags:
+- `--port <n>`
+- `--no-tls`
+- `--tls-cert <path>`
+- `--tls-key <path>`
+- `--http-port <n>`
+
+3) Sync system settings (TLS + /etc/hosts) for all domains:
+```bash
+sudo ./dist/golink sync-sys
+```
+
+Auto-update runs on `serve`. If a newer GitHub tag is found, the binary updates and restarts.
 
 ## Quick Start (HTTPS, self-signed)
 1) Generate a self-signed cert (files land in `./tls/cert.pem` and `./tls/key.pem`).
 To use **all domains from the database**:
 ```bash
-bun run gen-tls
+# from the binary
+sudo ./dist/golink sync-sys
 ```
 Or regenerate manually for **multiple domains** with `subjectAltName`:
 ```bash
@@ -63,7 +104,7 @@ openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 3650 \
 
 2) Run HTTPS (non-privileged port):
 ```bash
-PORT=8443 TLS=1 bun run src/index.ts
+bun run src/index.ts serve --port 8443
 ```
 Then visit `https://go:8443/_/` (browser will warn because it’s self-signed).
 
@@ -77,7 +118,7 @@ security add-trusted-cert -k ~/Library/Keychains/login.keychain-db ./tls/cert.pe
 You need either port 443 or a port forward:
 - **Bind 443 directly (requires sudo, frees the port first):**
   ```bash
-  sudo PORT=443 TLS=1 bun run src/index.ts
+  sudo bun run src/index.ts serve
   ```
 - **Port-forward 443 -> 8443 using PF (macOS):**
   1. Create anchor `/etc/pf.anchors/golink`:
@@ -111,7 +152,7 @@ EOF'
 ## Hot Reload
 Use Bun watch mode during development:
 ```bash
-PORT=8443 TLS=1 bun --watch src/index.ts
+bun --watch src/index.ts serve --port 8443
 ```
 
 ## Logs
@@ -137,7 +178,7 @@ sudo sed -i '' 's/127.0.0.1 go/127.0.0.1 g/' /etc/hosts
 
 2) If using HTTPS, regenerate the cert with the new hostname(s):
 ```bash
-bun run gen-tls
+sudo ./dist/golink sync-sys
 ```
 Or manually set the SAN list:
 ```bash
