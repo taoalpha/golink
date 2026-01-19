@@ -82,7 +82,24 @@ export function renderDashboard(domain: string, message: string): Response {
     .slice(0, 10)
     .map((m) => {
       const editHref = `/_/edit/${encodeURIComponent(m.slug)}?domain=${encodeURIComponent(m.domain)}`;
-      return `<tr><td><a href="${editHref}"><code>${escapeHtml(m.domain)}/${escapeHtml(m.slug)}</code></a></td><td>${m.count}</td></tr>`;
+      const domainText = escapeHtml(m.domain);
+      const slugText = escapeHtml(m.slug);
+      return `
+<tr>
+  <td><a href="${editHref}"><code>${domainText}/${slugText}</code></a></td>
+  <td>${m.count}</td>
+  <td>
+    <div class="action-row">
+      <a href="${editHref}">Add</a>
+      <form action="/_/ignore" method="POST">
+        <input type="hidden" name="domain" value="${domainText}">
+        <input type="hidden" name="slug" value="${slugText}">
+        <button type="submit" class="btn-link">Ignore</button>
+      </form>
+    </div>
+  </td>
+</tr>
+`;
     })
     .join("");
 
@@ -93,14 +110,30 @@ export function renderDashboard(domain: string, message: string): Response {
       const domainText = escapeHtml(event.domain);
       const urlText = event.url ? escapeHtml(event.url) : "";
       const timeText = escapeHtml(event.created_at);
-      return `<tr><td><span class="event-pill event-${eventLabel}">${eventLabel}</span></td><td><code>${domainText}/${slugText}</code></td><td>${urlText}</td><td>${timeText}</td></tr>`;
+      const eventId = String(event.id);
+      return `
+<tr>
+  <td><span class="event-pill event-${eventLabel}">${eventLabel}</span></td>
+  <td><code>${domainText}/${slugText}</code></td>
+  <td>${urlText}</td>
+  <td>
+    <div class="action-row">
+      <span>${timeText}</span>
+      <form action="/_/events/delete" method="POST">
+        <input type="hidden" name="event_id" value="${eventId}">
+        <button type="submit" class="btn-link">Delete</button>
+      </form>
+    </div>
+  </td>
+</tr>
+`;
     })
     .join("");
 
   const html = renderTemplate(DASHBOARD_HTML, {
     message: escapeHtml(message),
     rows: tableRows || '<tr><td colspan="4" class="empty-state">No links yet.</td></tr>',
-    missRows: missRows || '<tr><td colspan="2" class="empty-state">No misses yet.</td></tr>',
+    missRows: missRows || '<tr><td colspan="3" class="empty-state">No misses yet.</td></tr>',
     eventRows: eventRows || '<tr><td colspan="4" class="empty-state">No changes yet.</td></tr>',
   });
 

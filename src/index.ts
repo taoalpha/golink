@@ -1,4 +1,4 @@
-import { db, recordLinkEvent, recordVisit, getDomains, addDomain } from "./db";
+import { db, recordLinkEvent, recordVisit, getDomains, addDomain, ignoreMiss, deleteLinkEvent, clearLinkEvents } from "./db";
 import { renderDashboard, renderEditPage, redirectToEdit, renderDomainsPage } from "./handlers";
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, copyFileSync } from "node:fs";
@@ -92,17 +92,17 @@ function runServe(argv: string[]): void {
 }
 
 function printHelp(): void {
-  console.log(`Usage:
-  golink serve [options]
-  golink sync-sys
+  const banner = "\u001b[38;5;208m" +
+"   ____       _     _     _     \n" +
+"  / ___| ___ | |   (_)_ __ | | __ \n" +
+" | |  _ / _ \\| |   | | '_ \\| |/ / \n" +
+" | |_| | (_) | |___| | | | |   <  \n" +
+"  \\____|\\___/|_____|_|_| |_|_|\\_\\ \n" +
+"\u001b[0m";
 
-Options (serve):
-  --port <n>       Port to listen on (default: 443 or 8787 with --no-tls)
-  --no-tls         Disable TLS
-  --tls-cert <p>   TLS cert path (default: ./tls/cert.pem)
-  --tls-key <p>    TLS key path (default: ./tls/key.pem)
-  --http-port <n>  HTTP redirect port when TLS is enabled (default: 80)
-`);
+  const version = pkg.version;
+
+  console.log(`${banner}GoLink v${version}\n\nUsage:\n  golink serve [options]\n  golink sync-sys\n\nOptions (serve):\n  --port <n>       Port to listen on (default: 443 or 8787 with --no-tls)\n  --no-tls         Disable TLS\n  --tls-cert <p>   TLS cert path (default: ./tls/cert.pem)\n  --tls-key <p>    TLS key path (default: ./tls/key.pem)\n  --http-port <n>  HTTP redirect port when TLS is enabled (default: 80)\n`);
 }
 
 async function handleAdmin(request: Request, pathname: string, domain: string): Promise<Response> {
@@ -162,6 +162,18 @@ async function handleAdmin(request: Request, pathname: string, domain: string): 
 
     if (request.method === "POST" && pathname === "/_/delete") {
       return handleDelete(request, domain);
+    }
+
+    if (request.method === "POST" && pathname === "/_/ignore") {
+      return handleIgnore(request, domain);
+    }
+
+    if (request.method === "POST" && pathname === "/_/events/delete") {
+      return handleEventDelete(request);
+    }
+
+    if (request.method === "POST" && pathname === "/_/events/clear") {
+      return handleEventsClear();
     }
 
 
@@ -265,6 +277,32 @@ async function handleDelete(request: Request, domain: string): Promise<Response>
       recordLinkEvent(formDomain, slug, "delete", existing.url, existing.default_url);
     }
   }
+  return Response.redirect("/_/", 302);
+}
+
+async function handleIgnore(request: Request, domain: string): Promise<Response> {
+  const body = await request.text();
+  const data = parseForm(body);
+  const slug = normalizeSlug(data.slug ?? "");
+  const formDomain = (data.domain ?? "").trim().toLowerCase() || domain;
+  if (slug) {
+    ignoreMiss(formDomain, slug);
+  }
+  return Response.redirect("/_/", 302);
+}
+
+async function handleEventDelete(request: Request): Promise<Response> {
+  const body = await request.text();
+  const data = parseForm(body);
+  const idValue = Number(data.event_id ?? "");
+  if (Number.isFinite(idValue) && idValue > 0) {
+    deleteLinkEvent(idValue);
+  }
+  return Response.redirect("/_/", 302);
+}
+
+function handleEventsClear(): Response {
+  clearLinkEvents();
   return Response.redirect("/_/", 302);
 }
 

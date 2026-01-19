@@ -188,12 +188,33 @@ export type MissStats = {
 
 export function getMissStats(): MissStats[] {
   return db.query(`
-    SELECT domain, slug, COUNT(*) as count
-    FROM visits 
-    WHERE visit_type = 'miss'
-    GROUP BY domain, slug
+    SELECT v.domain, v.slug, COUNT(*) as count
+    FROM visits v
+    LEFT JOIN ignored_misses i
+      ON v.domain = i.domain AND v.slug = i.slug
+    WHERE v.visit_type = 'miss' AND i.slug IS NULL
+    GROUP BY v.domain, v.slug
     ORDER BY count DESC
   `).all() as MissStats[];
+}
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS ignored_misses (
+    domain TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(domain, slug)
+  );
+`);
+
+db.run(`CREATE INDEX IF NOT EXISTS ignored_misses_domain_idx ON ignored_misses (domain);`);
+
+db.run(`CREATE INDEX IF NOT EXISTS ignored_misses_slug_idx ON ignored_misses (slug);`);
+
+export function ignoreMiss(domain: string, slug: string): void {
+  db.query(
+    "INSERT OR IGNORE INTO ignored_misses (domain, slug) VALUES (?, ?)"
+  ).run(domain, slug);
 }
 
 db.run(`
@@ -233,6 +254,7 @@ export function recordLinkEvent(
 }
 
 export type LinkEventRow = {
+  id: number;
   domain: string;
   slug: string;
   event_type: LinkEventType;
@@ -242,8 +264,16 @@ export type LinkEventRow = {
 
 export function getRecentLinkEvents(limit = 10): LinkEventRow[] {
   return db.query(
-    "SELECT domain, slug, event_type, url, created_at FROM link_events ORDER BY id DESC LIMIT ?"
+    "SELECT id, domain, slug, event_type, url, created_at FROM link_events ORDER BY id DESC LIMIT ?"
   ).all(limit) as LinkEventRow[];
+}
+
+export function deleteLinkEvent(id: number): void {
+  db.query("DELETE FROM link_events WHERE id = ?").run(id);
+}
+
+export function clearLinkEvents(): void {
+  db.query("DELETE FROM link_events").run();
 }
 
 db.run(`

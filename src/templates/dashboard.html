@@ -315,6 +315,18 @@
             color: var(--text-ink);
         }
 
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 2.5rem 0 1rem;
+        }
+
+        .section-header .section-title {
+            margin: 0;
+        }
+
         .card-secondary {
             background: var(--surface);
             border-radius: 12px;
@@ -374,6 +386,7 @@
                         <tr>
                             <th>Slug</th>
                             <th>Attempts</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -383,7 +396,12 @@
             </div>
         </div>
 
-        <h2 class="section-title">Recent Changes</h2>
+        <div class="section-header">
+            <h2 class="section-title">Recent Changes</h2>
+            <form action="/_/events/clear" method="POST">
+                <button type="submit" class="btn-link">Clear All</button>
+            </form>
+        </div>
         <div class="card card-secondary">
             <div class="table-wrapper">
                 <table>
