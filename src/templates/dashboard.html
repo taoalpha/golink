@@ -219,6 +219,36 @@
             opacity: 1;
         }
 
+        .event-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            line-height: 1.4;
+        }
+
+        .event-create {
+            background-color: #ecfdf5;
+            color: #047857;
+            border: 1px solid rgba(4, 120, 87, 0.2);
+        }
+
+        .event-update {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid rgba(29, 78, 216, 0.2);
+        }
+
+        .event-delete {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid rgba(185, 28, 28, 0.2);
+        }
+
         .empty-state {
             text-align: center;
             color: var(--text-muted);
@@ -235,11 +265,11 @@
         }
 
         .stat-template {
-            color: #2563eb;
+            color: #57534e;
         }
 
         .stat-default {
-            color: #7c3aed;
+            color: #78716c;
         }
 
         .text-muted {
@@ -317,6 +347,25 @@
                     </thead>
                     <tbody>
                         {{missRows}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h2 class="section-title">Recent Changes</h2>
+        <div class="card card-secondary">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Slug</th>
+                            <th>URL</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{eventRows}}
                     </tbody>
                 </table>
             </div>

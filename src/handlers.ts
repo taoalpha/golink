@@ -1,4 +1,4 @@
-import { db, type LinkRow, getLinkStats, getMissStats } from "./db";
+import { db, type LinkRow, getLinkStats, getMissStats, getRecentLinkEvents } from "./db";
 import {
   escapeHtml,
   renderTemplate,
@@ -22,6 +22,7 @@ export function renderDashboard(message: string): Response {
   const stats = getLinkStats();
   const statsMap = new Map(stats.map((s) => [s.slug, s]));
   const misses = getMissStats();
+  const events = getRecentLinkEvents(10);
 
   const tableRows = rows
     .map((row) => {
@@ -69,10 +70,21 @@ export function renderDashboard(message: string): Response {
     .map((m) => `<tr><td><code>${escapeHtml(m.slug)}</code></td><td>${m.count}</td></tr>`)
     .join("");
 
+  const eventRows = events
+    .map((event) => {
+      const eventLabel = escapeHtml(event.event_type);
+      const slugText = escapeHtml(event.slug);
+      const urlText = event.url ? escapeHtml(event.url) : "";
+      const timeText = escapeHtml(event.created_at);
+      return `<tr><td><span class="event-pill event-${eventLabel}">${eventLabel}</span></td><td><code>${slugText}</code></td><td>${urlText}</td><td>${timeText}</td></tr>`;
+    })
+    .join("");
+
   const html = renderTemplate(DASHBOARD_HTML, {
     message: escapeHtml(message),
     rows: tableRows || '<tr><td colspan="4" class="empty-state">No links yet.</td></tr>',
     missRows: missRows || '<tr><td colspan="2" class="empty-state">No misses yet.</td></tr>',
+    eventRows: eventRows || '<tr><td colspan="4" class="empty-state">No changes yet.</td></tr>',
   });
 
   return new Response(html, {

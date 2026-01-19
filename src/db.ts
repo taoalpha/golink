@@ -134,3 +134,16 @@ export function recordLinkEvent(
     "INSERT INTO link_events (slug, event_type, url, default_url) VALUES (?, ?, ?, ?)"
   ).run(slug, eventType, url, defaultUrl);
 }
+
+export type LinkEventRow = {
+  slug: string;
+  event_type: LinkEventType;
+  url: string | null;
+  created_at: string;
+};
+
+export function getRecentLinkEvents(limit = 10): LinkEventRow[] {
+  return db.query(
+    "SELECT slug, event_type, url, created_at FROM link_events ORDER BY id DESC LIMIT ?"
+  ).all(limit) as LinkEventRow[];
+}
