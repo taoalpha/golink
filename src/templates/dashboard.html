@@ -420,5 +420,26 @@
             </div>
         </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Restore scroll position if hash is a number
+            const hash = window.location.hash.substring(1);
+            if (hash && !isNaN(hash)) {
+                window.scrollTo(0, parseFloat(hash));
+                history.replaceState(null, null, window.location.pathname + window.location.search);
+            }
+
+            // Inject scroll position into ignore forms and event delete forms
+            document.querySelectorAll('form[action="/_/ignore"], form[action="/_/events/delete"]').forEach(form => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'scroll';
+                form.appendChild(input);
+                form.addEventListener('submit', () => {
+                    input.value = window.scrollY;
+                });
+            });
+        });
+    </script>
 </body>
 </html>

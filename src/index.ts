@@ -285,20 +285,24 @@ async function handleIgnore(request: Request, domain: string): Promise<Response>
   const data = parseForm(body);
   const slug = normalizeSlug(data.slug ?? "");
   const formDomain = (data.domain ?? "").trim().toLowerCase() || domain;
+  const scroll = data.scroll ?? "";
   if (slug) {
     ignoreMiss(formDomain, slug);
   }
-  return Response.redirect("/_/", 302);
+  const target = scroll ? `/_/#${encodeURIComponent(scroll)}` : "/_/";
+  return Response.redirect(target, 302);
 }
 
 async function handleEventDelete(request: Request): Promise<Response> {
   const body = await request.text();
   const data = parseForm(body);
   const idValue = Number(data.event_id ?? "");
+  const scroll = data.scroll ?? "";
   if (Number.isFinite(idValue) && idValue > 0) {
     deleteLinkEvent(idValue);
   }
-  return Response.redirect("/_/", 302);
+  const target = scroll ? `/_/#${encodeURIComponent(scroll)}` : "/_/";
+  return Response.redirect(target, 302);
 }
 
 function handleEventsClear(): Response {
