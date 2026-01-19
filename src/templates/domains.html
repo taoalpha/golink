@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Domains</title>
+    <style>
+        :root {
+            --bg-paper: #f7f4ef;
+            --surface: #ffffff;
+            --text-ink: #1f2a37;
+            --text-muted: #6b7280;
+            --accent-ember: #c26a4a;
+            --accent-ember-dark: #a95539;
+            --border-light: #ebe7e2;
+            --focus-ring: 0 0 0 3px rgba(194, 106, 74, 0.2);
+            --font-display: "Palatino Linotype", Palatino, "Book Antiqua", serif;
+            --font-ui: "Trebuchet MS", "Gill Sans", "Gill Sans MT", sans-serif;
+            --shadow-card: 0 18px 40px rgba(31, 42, 55, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-paper);
+            color: var(--text-ink);
+            font-family: var(--font-ui);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image:
+                radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+            background-size: 22px 22px, 12px 12px;
+            background-position: 0 0, 6px 8px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px;
+            padding: 2rem 1.5rem;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid rgba(0,0,0,0.03);
+            margin-bottom: 2rem;
+        }
+
+        .nav-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-ember);
+            text-decoration: underline;
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            margin: 0 0 0.5rem 0;
+            color: var(--text-ink);
+        }
+
+        h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem 0;
+            color: var(--text-ink);
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin: 0 0 2rem 0;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            margin-bottom: 0.6rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.85rem 1rem;
+            font-size: 1rem;
+            border: 2px solid var(--border-light);
+            border-radius: 12px;
+            background: #ffffff;
+            transition: all 0.2s ease;
+            font-family: "Courier New", Courier, monospace;
+            color: var(--text-ink);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-ember);
+            background: #fff;
+            box-shadow: var(--focus-ring);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-save {
+            padding: 0.85rem 1.5rem;
+            border-radius: 999px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            background-color: var(--accent-ember);
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+            box-shadow: 0 14px 28px rgba(194, 106, 74, 0.25);
+            white-space: nowrap;
+        }
+        
+        .btn-save:hover {
+            background-color: var(--accent-ember-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0.5rem;
+            border-radius: 6px;
+        }
+        
+        .btn-delete:hover {
+            background: #fef2f2;
+            text-decoration: underline;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        th {
+            font-family: var(--font-display);
+            font-weight: 700;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        
+        td {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1rem;
+        }
+
+        .hosts-block {
+            background: #f4f4f5;
+            padding: 1.2rem;
+            border-radius: 12px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            color: #374151;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <main class="card">
+            <a href="{{backUrl}}" class="nav-link">Back to Dashboard</a>
+
+            <h1>Manage Domains</h1>
+            <p class="subtitle">Add custom domains to access your links (e.g., go/, team/, links/). After adding, update your hosts file to resolve the domain locally.</p>
+
+            <form action="/_/domains" method="POST">
+                <div class="form-group">
+                    <label for="domain">Add New Domain</label>
+                    <div class="input-row">
+                        <input type="text" id="domain" name="domain" placeholder="team" required>
+                        <button type="submit" class="btn-save">Add Domain</button>
+                    </div>
+                </div>
+            </form>
+
+            <h2>Active Domains</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Domain</th>
+                        <th>Links</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{domainRows}}
+                </tbody>
+            </table>
+
+            <h2>Setup Instructions</h2>
+            <p class="subtitle">To use these domains locally, add them to your hosts file:</p>
+            <div class="hosts-block">{{hostsInstructions}}</div>
+        </main>
+    </div>
+</body>
+</html>

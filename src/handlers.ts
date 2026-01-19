@@ -1,4 +1,11 @@
-import { db, type LinkRow, getLinkStats, getMissStats, getRecentLinkEvents } from "./db";
+import {
+  getAllLinks,
+  type LinkRow,
+  getLinkStats,
+  getMissStats,
+  getRecentLinkEvents,
+  type DomainRow,
+} from "./db";
 import {
   escapeHtml,
   renderTemplate,
@@ -14,25 +21,29 @@ const EDIT_HTML = await Bun.file(
   new URL("./templates/edit.html", import.meta.url).pathname
 ).text();
 
-export function renderDashboard(message: string): Response {
-  const rows = db
-    .query("SELECT slug, url, default_url, is_template FROM links ORDER BY slug ASC")
-    .all() as LinkRow[];
+const DOMAINS_HTML = await Bun.file(
+  new URL("./templates/domains.html", import.meta.url).pathname
+).text();
+
+export function renderDashboard(domain: string, message: string): Response {
+  const rows = getAllLinks();
 
   const stats = getLinkStats();
-  const statsMap = new Map(stats.map((s) => [s.slug, s]));
+  const statsMap = new Map(stats.map((s) => [`${s.domain}:${s.slug}`, s]));
   const misses = getMissStats();
   const events = getRecentLinkEvents(10);
 
   const tableRows = rows
-    .map((row) => {
+    .map((row: LinkRow) => {
       const slugText = escapeHtml(row.slug);
+      const domainText = escapeHtml(row.domain);
       const urlText = escapeHtml(row.url);
       const defaultText = row.default_url ? escapeHtml(row.default_url) : "";
       const displaySlug = row.is_template === 1 ? (templateRoot(row.slug) ?? row.slug) : row.slug;
       const displaySlugText = escapeHtml(displaySlug);
+      const fullKey = `${domainText}/${displaySlugText}`;
       const targetHref = encodeURI(`/${displaySlug}`);
-      const editHref = `/_/edit/${encodeURIComponent(row.slug)}`;
+      const editHref = `/_/edit/${encodeURIComponent(row.slug)}?domain=${encodeURIComponent(row.domain)}`;
       const showsDefault = row.is_template === 1 && isTemplateSlug(row.slug);
       const destination = defaultText && showsDefault
         ? `${urlText}<div class="hint">Default: ${defaultText}</div>`
@@ -40,15 +51,15 @@ export function renderDashboard(message: string): Response {
       const badge = row.is_template === 1
         ? '<span class="badge-variable" title="Accepts parameters">Variable</span>'
         : "";
-      
-      const linkStats = statsMap.get(row.slug);
+
+      const linkStats = statsMap.get(`${row.domain}:${row.slug}`);
       const hitsHtml = linkStats
         ? formatStatsCell(linkStats.total, linkStats.exact, linkStats.template, linkStats.default_hits, row.is_template === 1)
         : '<span class="text-muted">0</span>';
 
       return `
 <tr>
-  <td><a href="${targetHref}">${displaySlugText}</a>${badge}</td>
+  <td><a href="${targetHref}">${fullKey}</a>${badge}</td>
   <td>${destination}</td>
   <td>${hitsHtml}</td>
   <td>
@@ -56,6 +67,7 @@ export function renderDashboard(message: string): Response {
       <a href="${editHref}">Edit</a>
       <form action="/_/delete" method="POST">
         <input type="hidden" name="slug" value="${slugText}">
+        <input type="hidden" name="domain" value="${domainText}">
         <button type="submit" class="btn-link">Delete</button>
       </form>
     </div>
@@ -67,16 +79,17 @@ export function renderDashboard(message: string): Response {
 
   const missRows = misses
     .slice(0, 10)
-    .map((m) => `<tr><td><code>${escapeHtml(m.slug)}</code></td><td>${m.count}</td></tr>`)
+    .map((m) => `<tr><td><code>${escapeHtml(m.domain)}/${escapeHtml(m.slug)}</code></td><td>${m.count}</td></tr>`)
     .join("");
 
   const eventRows = events
     .map((event) => {
       const eventLabel = escapeHtml(event.event_type);
       const slugText = escapeHtml(event.slug);
+      const domainText = escapeHtml(event.domain);
       const urlText = event.url ? escapeHtml(event.url) : "";
       const timeText = escapeHtml(event.created_at);
-      return `<tr><td><span class="event-pill event-${eventLabel}">${eventLabel}</span></td><td><code>${slugText}</code></td><td>${urlText}</td><td>${timeText}</td></tr>`;
+      return `<tr><td><span class="event-pill event-${eventLabel}">${eventLabel}</span></td><td><code>${domainText}/${slugText}</code></td><td>${urlText}</td><td>${timeText}</td></tr>`;
     })
     .join("");
 
@@ -103,8 +116,23 @@ function formatStatsCell(total: number, exact: number, template: number, default
   return `<span class="stat-total">${total}</span> <span class="stat-breakdown">(${parts.join(", ")})</span>`;
 }
 
-export function renderEditPage(slug: string, url: string, defaultUrl: string, message: string): Response {
+export function renderEditPage(
+  domain: string,
+  slug: string,
+  url: string,
+  defaultUrl: string,
+  message: string,
+  domains: DomainRow[]
+): Response {
   const isTemplate = isTemplateSlug(slug);
+  const optionsHtml = domains
+    .map((item) => {
+      const nameText = escapeHtml(item.name);
+      const selected = item.name === domain ? " selected" : "";
+      return `<option value="${nameText}"${selected}>${nameText}</option>`;
+    })
+    .join("");
+
   const html = renderTemplate(EDIT_HTML, {
     slug: escapeHtml(slug),
     url: escapeHtml(url),
@@ -114,6 +142,9 @@ export function renderEditPage(slug: string, url: string, defaultUrl: string, me
       ? "Used when visiting the base path without variables."
       : "Add {name} in the slug to enable defaults.",
     message: escapeHtml(message),
+    domain: escapeHtml(domain),
+    domainOptions: optionsHtml,
+    manageDomainsUrl: "/_/domains",
   });
 
   return new Response(html, {
@@ -124,4 +155,30 @@ export function renderEditPage(slug: string, url: string, defaultUrl: string, me
 export function redirectToEdit(slug: string): Response {
   const encoded = encodeURIComponent(slug);
   return Response.redirect(`/_/edit/${encoded}`, 302);
+}
+
+export function renderDomainsPage(domain: string, domains: DomainRow[], message: string): Response {
+  const rows = domains
+    .map((item) => {
+      const nameText = escapeHtml(item.name);
+      return `<tr><td><code>${nameText}</code></td><td>${item.link_count}</td></tr>`;
+    })
+    .join("");
+
+  const instructions = domains
+    .map((item) => `sudo sh -c 'echo "127.0.0.1 ${item.name}" >> /etc/hosts'`)
+    .join("\n");
+
+  const html = renderTemplate(DOMAINS_HTML, {
+    message: escapeHtml(message),
+    domainRows: rows || '<tr><td colspan="2" class="empty-state">No domains yet.</td></tr>',
+    hostsInstructions: escapeHtml(instructions),
+    domain: escapeHtml(domain),
+    backUrl: "/_/",
+    domainValue: escapeHtml(domain),
+  });
+
+  return new Response(html, {
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
 }

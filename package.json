@@ -3,6 +3,9 @@
   "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "gen-tls": "bun run scripts/gen-tls.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

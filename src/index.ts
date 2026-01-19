@@ -1,5 +1,5 @@
-import { db, recordLinkEvent, recordVisit } from "./db";
-import { renderDashboard, renderEditPage, redirectToEdit } from "./handlers";
+import { db, recordLinkEvent, recordVisit, getDomains, addDomain } from "./db";
+import { renderDashboard, renderEditPage, redirectToEdit, renderDomainsPage } from "./handlers";
 import {
   normalizeSlug,
   parseForm,
@@ -25,68 +25,99 @@ Bun.serve({
   async fetch(request) {
     const url = new URL(request.url);
     const pathname = url.pathname;
+    const domain = url.hostname || "go";
 
     if (pathname === "/" || pathname === "") {
       return Response.redirect("/_/", 302);
     }
 
     if (pathname.startsWith("/_/")) {
-      return handleAdmin(request, pathname);
+      return handleAdmin(request, pathname, domain);
     }
 
-    return handleRedirect(pathname);
+    return handleRedirect(pathname, domain);
   },
 });
 
-async function handleAdmin(request: Request, pathname: string): Promise<Response> {
-  if (request.method === "GET" && pathname === "/_/") {
-    return renderDashboard("");
-  }
-
-  if (request.method === "GET" && pathname.startsWith("/_/edit")) {
-    const prefix = "/_/edit/";
-    let slug = "";
-    if (pathname.startsWith(prefix)) {
-      slug = decodeURIComponent(pathname.slice(prefix.length));
+async function handleAdmin(request: Request, pathname: string, domain: string): Promise<Response> {
+    if (request.method === "GET" && pathname === "/_/") {
+      return renderDashboard(domain, "");
     }
-    slug = normalizeSlug(slug);
 
-    let urlValue = "";
-    let defaultUrlValue = "";
-    if (slug) {
-      const row = db
-        .query("SELECT url, default_url FROM links WHERE slug = ?")
-        .get(slug) as { url: string; default_url: string | null } | undefined;
-      urlValue = row?.url ?? "";
-      defaultUrlValue = row?.default_url ?? "";
+    if (request.method === "GET" && pathname === "/_/domains") {
+      const domains = getDomains();
+      return renderDomainsPage(domain, domains, "");
     }
-    return renderEditPage(slug, urlValue, defaultUrlValue, "");
-  }
 
-  if (request.method === "POST" && pathname === "/_/save") {
-    return handleSave(request);
-  }
+    if (request.method === "POST" && pathname === "/_/domains") {
+      const body = await request.text();
+      const data = parseForm(body);
+      const input = (data.domain ?? "").trim().toLowerCase();
+      if (!input) {
+        const domains = getDomains();
+        return renderDomainsPage(domain, domains, "Domain is required.");
+      }
+      if (!/^[a-z0-9-]+$/.test(input)) {
+        const domains = getDomains();
+        return renderDomainsPage(domain, domains, "Domain may include letters, numbers, and hyphens.");
+      }
+      addDomain(input);
+      const domains = getDomains();
+      return renderDomainsPage(input, domains, "Domain added.");
+    }
 
-  if (request.method === "POST" && pathname === "/_/delete") {
-    return handleDelete(request);
-  }
+    if (request.method === "GET" && pathname.startsWith("/_/edit")) {
+      const url = new URL(request.url);
+      const prefix = "/_/edit/";
+      let slug = "";
+      if (pathname.startsWith(prefix)) {
+        slug = decodeURIComponent(pathname.slice(prefix.length));
+      }
+      slug = normalizeSlug(slug);
+
+      const editDomain = (url.searchParams.get("domain") ?? domain).toLowerCase();
+
+      let urlValue = "";
+      let defaultUrlValue = "";
+      if (slug) {
+        const row = db
+          .query("SELECT url, default_url FROM links WHERE domain = ? AND slug = ?")
+          .get(editDomain, slug) as { url: string; default_url: string | null } | undefined;
+        urlValue = row?.url ?? "";
+        defaultUrlValue = row?.default_url ?? "";
+      }
+      const domains = getDomains();
+      return renderEditPage(editDomain, slug, urlValue, defaultUrlValue, "", domains);
+    }
+
+    if (request.method === "POST" && pathname === "/_/save") {
+      return handleSave(request, domain);
+    }
+
+    if (request.method === "POST" && pathname === "/_/delete") {
+      return handleDelete(request, domain);
+    }
+
 
   return new Response("Not found", { status: 404 });
 }
 
-async function handleSave(request: Request): Promise<Response> {
+async function handleSave(request: Request, domain: string): Promise<Response> {
   const body = await request.text();
   const data = parseForm(body);
   const rawSlug = normalizeSlug(data.slug ?? "");
   const rawUrl = (data.url ?? "").trim();
   const rawDefaultUrl = (data.default_url ?? "").trim();
+  const formDomain = (data.domain ?? "").trim().toLowerCase() || domain;
 
   if (!rawSlug) {
-    return renderEditPage(rawSlug, rawUrl, rawDefaultUrl, "Slug is required.");
+    const domains = getDomains();
+    return renderEditPage(formDomain, rawSlug, rawUrl, rawDefaultUrl, "Slug is required.", domains);
   }
 
   if (/\s/.test(rawSlug)) {
-    return renderEditPage(rawSlug, rawUrl, rawDefaultUrl, "Slug cannot contain spaces.");
+    const domains = getDomains();
+    return renderEditPage(formDomain, rawSlug, rawUrl, rawDefaultUrl, "Slug cannot contain spaces.", domains);
   }
 
   let parsedUrl: URL | null = null;
@@ -97,7 +128,8 @@ async function handleSave(request: Request): Promise<Response> {
   }
 
   if (!parsedUrl || (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:")) {
-    return renderEditPage(rawSlug, rawUrl, rawDefaultUrl, "URL must be http or https.");
+    const domains = getDomains();
+    return renderEditPage(formDomain, rawSlug, rawUrl, rawDefaultUrl, "URL must be http or https.", domains);
   }
 
   let parsedDefaultUrl: URL | null = null;
@@ -110,19 +142,21 @@ async function handleSave(request: Request): Promise<Response> {
   }
 
   if (rawDefaultUrl && (!parsedDefaultUrl || (parsedDefaultUrl.protocol !== "http:" && parsedDefaultUrl.protocol !== "https:"))) {
-    return renderEditPage(rawSlug, rawUrl, rawDefaultUrl, "Default URL must be http or https.");
+    const domains = getDomains();
+    return renderEditPage(formDomain, rawSlug, rawUrl, rawDefaultUrl, "Default URL must be http or https.", domains);
   }
 
   const templateFlag = isTemplateSlug(rawSlug) ? 1 : 0;
   const existing = db
-    .query("SELECT url, default_url FROM links WHERE slug = ?")
-    .get(rawSlug) as { url: string; default_url: string | null } | undefined;
+    .query("SELECT url, default_url FROM links WHERE domain = ? AND slug = ?")
+    .get(formDomain, rawSlug) as { url: string; default_url: string | null } | undefined;
 
   db.query(
-    "INSERT INTO links (slug, url, default_url, is_template) VALUES (?, ?, ?, ?) ON CONFLICT(slug) DO UPDATE SET url = excluded.url, default_url = excluded.default_url, is_template = excluded.is_template"
-  ).run(rawSlug, rawUrl, rawDefaultUrl || null, templateFlag);
+    "INSERT INTO links (domain, slug, url, default_url, is_template) VALUES (?, ?, ?, ?, ?) ON CONFLICT(domain, slug) DO UPDATE SET url = excluded.url, default_url = excluded.default_url, is_template = excluded.is_template"
+  ).run(formDomain, rawSlug, rawUrl, rawDefaultUrl || null, templateFlag);
 
   recordLinkEvent(
+    formDomain,
     rawSlug,
     existing ? "update" : "create",
     rawUrl,
@@ -132,42 +166,43 @@ async function handleSave(request: Request): Promise<Response> {
   return Response.redirect("/_/", 302);
 }
 
-async function handleDelete(request: Request): Promise<Response> {
+async function handleDelete(request: Request, domain: string): Promise<Response> {
   const body = await request.text();
   const data = parseForm(body);
   const slug = normalizeSlug(data.slug ?? "");
+  const formDomain = (data.domain ?? "").trim().toLowerCase() || domain;
   if (slug) {
     const existing = db
-      .query("SELECT url, default_url FROM links WHERE slug = ?")
-      .get(slug) as { url: string; default_url: string | null } | undefined;
+      .query("SELECT url, default_url FROM links WHERE domain = ? AND slug = ?")
+      .get(formDomain, slug) as { url: string; default_url: string | null } | undefined;
 
-    db.query("DELETE FROM links WHERE slug = ?").run(slug);
+    db.query("DELETE FROM links WHERE domain = ? AND slug = ?").run(formDomain, slug);
 
     if (existing) {
-      recordLinkEvent(slug, "delete", existing.url, existing.default_url);
+      recordLinkEvent(formDomain, slug, "delete", existing.url, existing.default_url);
     }
   }
   return Response.redirect("/_/", 302);
 }
 
-function handleRedirect(pathname: string): Response {
+function handleRedirect(pathname: string, domain: string): Response {
   const slug = normalizeSlug(decodeURIComponent(pathname.slice(1)));
   if (!slug) {
     return Response.redirect("/_/", 302);
   }
 
   const exact = db
-    .query("SELECT slug, url FROM links WHERE slug = ? AND is_template = 0")
-    .get(slug) as { slug: string; url: string } | undefined;
+    .query("SELECT slug, url FROM links WHERE domain = ? AND slug = ? AND is_template = 0")
+    .get(domain, slug) as { slug: string; url: string } | undefined;
 
   if (exact?.url) {
-    recordVisit(slug, exact.slug, "exact");
+    recordVisit(domain, slug, exact.slug, "exact");
     return Response.redirect(exact.url, 302);
   }
 
   const templates = db
-    .query("SELECT slug, url, default_url FROM links WHERE is_template = 1 ORDER BY slug ASC")
-    .all() as Array<{ slug: string; url: string; default_url: string | null }>;
+    .query("SELECT slug, url, default_url FROM links WHERE domain = ? AND is_template = 1 ORDER BY slug ASC")
+    .all(domain) as Array<{ slug: string; url: string; default_url: string | null }>;
 
   for (const template of templates) {
     const regex = templateToRegex(template.slug);
@@ -178,7 +213,7 @@ function handleRedirect(pathname: string): Response {
     if (match && match.groups) {
       const destination = applyTemplate(template.url, match.groups);
       if (destination) {
-        recordVisit(slug, template.slug, "template");
+        recordVisit(domain, slug, template.slug, "template");
         return Response.redirect(destination, 302);
       }
     }
@@ -190,12 +225,12 @@ function handleRedirect(pathname: string): Response {
       continue;
     }
     if (slug === root && template.default_url) {
-      recordVisit(slug, template.slug, "default");
+      recordVisit(domain, slug, template.slug, "default");
       return Response.redirect(template.default_url, 302);
     }
   }
 
-  recordVisit(slug, null, "miss");
+  recordVisit(domain, slug, null, "miss");
   return redirectToEdit(slug);
 }
 

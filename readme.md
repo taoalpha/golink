@@ -47,12 +47,18 @@ sudo PORT=80 bun run src/index.ts
 ```
 
 ## Quick Start (HTTPS, self-signed)
-1) Generate a self-signed cert (already scripted here): files land in `./tls/cert.pem` and `./tls/key.pem`. If you need to regenerate:
+1) Generate a self-signed cert (files land in `./tls/cert.pem` and `./tls/key.pem`).
+To use **all domains from the database**:
+```bash
+bun run gen-tls
+```
+Or regenerate manually for **multiple domains** with `subjectAltName`:
 ```bash
 mkdir -p tls
 openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 3650 \
   -keyout ./tls/key.pem -out ./tls/cert.pem \
-  -subj "/CN=go" -addext "subjectAltName=DNS:go"
+  -subj "/CN=go" \
+  -addext "subjectAltName=DNS:go,DNS:xx,DNS:team"
 ```
 
 2) Run HTTPS (non-privileged port):
@@ -129,11 +135,15 @@ Or replace the existing entry:
 sudo sed -i '' 's/127.0.0.1 go/127.0.0.1 g/' /etc/hosts
 ```
 
-2) If using HTTPS, regenerate the cert with the new hostname:
+2) If using HTTPS, regenerate the cert with the new hostname(s):
+```bash
+bun run gen-tls
+```
+Or manually set the SAN list:
 ```bash
 openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 3650 \
   -keyout ./tls/key.pem -out ./tls/cert.pem \
-  -subj "/CN=g" -addext "subjectAltName=DNS:g"
+  -subj "/CN=g" -addext "subjectAltName=DNS:g,DNS:go,DNS:team"
 
 # Trust it (macOS)
 security add-trusted-cert -k ~/Library/Keychains/login.keychain-db ./tls/cert.pem
