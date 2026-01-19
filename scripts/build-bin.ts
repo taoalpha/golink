@@ -2,8 +2,8 @@ import { mkdir } from "node:fs/promises"
 import { join } from "node:path"
 
 const rootDir = new URL("..", import.meta.url).pathname
-const distDir = new URL("../dist", import.meta.url).pathname
-const binPath = new URL(`../dist/golink${process.platform === "win32" ? ".exe" : ""}`, import.meta.url).pathname
+const distDir = join(rootDir, "dist")
+const binPath = join(distDir, `golink${process.platform === "win32" ? ".exe" : ""}`)
 
 await mkdir(distDir, { recursive: true })
 
