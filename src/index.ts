@@ -467,7 +467,7 @@ function getPlatformInfo(): { os: string; arch: string; ok: boolean } {
   if (arch === "arm64") arch = "arm64";
 
   const combo = `${os}-${arch}`;
-  const ok = ["linux-x64", "linux-arm64", "darwin-x64", "darwin-arm64", "windows-x64"].includes(combo);
+  const ok = ["linux-x64", "linux-arm64", "darwin-arm64", "windows-x64"].includes(combo);
 
   return { os, arch, ok };
 }

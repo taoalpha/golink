@@ -39,17 +39,25 @@ jobs:
       - name: Build
         run: bun run build:bin
 
-      - name: Package
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           mkdir -p dist-zip
-          if [[ "${{ matrix.target }}" == "windows-x64" ]]; then
-            mv dist/golink.exe dist/golink-windows-x64.exe || mv dist/golink dist/golink-windows-x64.exe
-            zip -j "dist-zip/golink-${{ matrix.target }}.zip" dist/golink-windows-x64.exe
-          else
-            mv dist/golink "dist/golink-${{ matrix.target }}"
-            zip -j "dist-zip/golink-${{ matrix.target }}.zip" dist/golink-${{ matrix.target }}
-          fi
+          mv dist/golink "dist/golink-${{ matrix.target }}"
+          zip -j "dist-zip/golink-${{ matrix.target }}.zip" dist/golink-${{ matrix.target }}
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist-zip | Out-Null
+          if (Test-Path "dist/golink.exe") {
+            Move-Item -Force "dist/golink.exe" "dist/golink-windows-x64.exe"
+          } elseif (Test-Path "dist/golink") {
+            Move-Item -Force "dist/golink" "dist/golink-windows-x64.exe"
+          }
+          Compress-Archive -Path "dist/golink-windows-x64.exe" -DestinationPath "dist-zip/golink-${{ matrix.target }}.zip" -Force
 
       - name: Upload
         uses: actions/upload-artifact@v4
