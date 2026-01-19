@@ -1,7 +1,7 @@
 import { db, recordLinkEvent, recordVisit, getDomains, addDomain, ignoreMiss, deleteLinkEvent, clearLinkEvents } from "./db";
 import { renderDashboard, renderEditPage, redirectToEdit, renderDomainsPage } from "./handlers";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, copyFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, copyFileSync, realpathSync } from "node:fs";
 import { chmodSync, renameSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -43,7 +43,8 @@ function runServe(argv: string[]): void {
     ?? `${tlsDir}/key.pem`;
   const httpPort = Number(cli.httpPort ?? Bun.env.HTTP_PORT ?? "80");
 
-  const execPath = process.argv[1] ?? process.argv[0] ?? "golink";
+  const rawExecPath = process.argv[0] ?? "golink";
+  const execPath = resolveExecPath(rawExecPath);
   checkForUpdates({
     currentVersion: pkg.version,
     repo: "taoalpha/golink",
@@ -359,6 +360,17 @@ function handleRedirect(pathname: string, domain: string): Response {
   return redirectToEdit(slug);
 }
 
+function resolveExecPath(value: string): string {
+  if (value.startsWith("/$bunfs/")) {
+    return process.argv[0] ?? value;
+  }
+  try {
+    return realpathSync(value);
+  } catch {
+    return value;
+  }
+}
+
 function parseArgs(args: string[]): {
   port?: string;
   noTls?: boolean;
@@ -450,15 +462,23 @@ function checkForUpdates(options: {
   const updated = updateBinary(options.repo, options.assetPrefix, latest, options.execPath);
   if (updated) {
     console.log("Update complete. Restarting...");
-    const execPath = process.argv[1] ?? process.argv[0] ?? "golink";
-    spawnSync(execPath, ["serve", ...process.argv.slice(3)], { stdio: "inherit" });
+    const rawExec = process.argv[0] ?? "golink";
+    const execPath = resolveExecPath(rawExec);
+    const args = ["serve", ...process.argv.slice(2)];
+    spawnSync(execPath, args, { stdio: "inherit" });
     process.exit(0);
   }
 }
 
+function normalizeVersion(value: string): string {
+  const trimmed = value.replace(/^v/, "");
+  const noMeta = trimmed.split("+")[0] ?? trimmed;
+  return noMeta.split("-")[0] ?? noMeta;
+}
+
 function compareVersions(a: string, b: string): number {
-  const cleanA = a.replace(/^v/, "");
-  const cleanB = b.replace(/^v/, "");
+  const cleanA = normalizeVersion(a);
+  const cleanB = normalizeVersion(b);
   const partsA = cleanA.split(".").map((part) => Number(part));
   const partsB = cleanB.split(".").map((part) => Number(part));
 
