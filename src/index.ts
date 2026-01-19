@@ -186,6 +186,11 @@ async function handleSave(request: Request, domain: string): Promise<Response> {
     return renderEditPage(formDomain, rawSlug, rawUrl, rawDefaultUrl, "Slug cannot contain spaces.", domains);
   }
 
+  if (rawSlug.startsWith("_/") || rawSlug === "_") {
+    const domains = getDomains();
+    return renderEditPage(formDomain, rawSlug, rawUrl, rawDefaultUrl, "Slug cannot start with _/.", domains);
+  }
+
   let parsedUrl: URL | null = null;
   try {
     parsedUrl = new URL(rawUrl);

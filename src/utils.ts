@@ -27,7 +27,7 @@ export function normalizeSlug(input: string): string {
 }
 
 export function isTemplateSlug(slug: string): boolean {
-  return /\{[A-Za-z0-9_]+\}/.test(slug);
+  return /\{[^}]*\}/.test(slug);
 }
 
 export function templateToRegex(template: string): RegExp | null {

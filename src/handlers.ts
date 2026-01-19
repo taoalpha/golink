@@ -75,8 +75,12 @@ export function renderDashboard(domain: string, message: string): Response {
     .join("");
 
   const missRows = misses
+    .filter((m) => m.slug !== "_/" && m.slug !== "_")
     .slice(0, 10)
-    .map((m) => `<tr><td><code>${escapeHtml(m.domain)}/${escapeHtml(m.slug)}</code></td><td>${m.count}</td></tr>`)
+    .map((m) => {
+      const editHref = `/_/edit/${encodeURIComponent(m.slug)}?domain=${encodeURIComponent(m.domain)}`;
+      return `<tr><td><a href="${editHref}"><code>${escapeHtml(m.domain)}/${escapeHtml(m.slug)}</code></a></td><td>${m.count}</td></tr>`;
+    })
     .join("");
 
   const eventRows = events

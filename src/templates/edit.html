@@ -133,6 +133,23 @@
             box-shadow: var(--focus-ring);
         }
 
+        .slug-wrapper:has(.slug-input:invalid:not(:placeholder-shown)) {
+            border-color: var(--accent-ember);
+            background-color: #fff8f6;
+        }
+
+        .error-message {
+            display: none;
+            color: var(--accent-ember);
+            font-size: 0.85rem;
+            margin-top: 0.4rem;
+            font-weight: 600;
+        }
+
+        .slug-wrapper:has(.slug-input:invalid:not(:placeholder-shown)) ~ .error-message {
+            display: block;
+        }
+
         .domain-select {
             appearance: none;
             border: none;
@@ -257,8 +274,9 @@
                             {{domainOptions}}
                         </select>
                         <span class="slug-separator">/</span>
-                        <input type="text" id="slug" name="slug" value="{{slug}}" class="slug-input" required autofocus placeholder="meet" autocomplete="off">
+                        <input type="text" id="slug" name="slug" value="{{slug}}" class="slug-input" required autofocus placeholder="meet" autocomplete="off" pattern="(?!_(\/|$)).*">
                     </div>
+                    <div class="error-message">Slugs cannot be "_" or start with "_/".</div>
                     <div class="hint">Use {name} placeholders for variable links.</div>
                 </div>
 
