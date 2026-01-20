@@ -364,10 +364,17 @@ function resolveExecPath(value: string): string {
   if (value.startsWith("/$bunfs/")) {
     return process.argv[0] ?? value;
   }
+  let candidate = value;
+  if (!value.includes("/")) {
+    candidate = Bun.which(value) ?? value;
+    if (candidate === "bun" || candidate.endsWith("/bun")) {
+      candidate = Bun.which("golink") ?? candidate;
+    }
+  }
   try {
-    return realpathSync(value);
+    return realpathSync(candidate);
   } catch {
-    return value;
+    return candidate;
   }
 }
 
