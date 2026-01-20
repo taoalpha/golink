@@ -1,10 +1,7 @@
 import { db, recordLinkEvent, recordVisit, getDomains, addDomain, ignoreMiss, deleteLinkEvent, clearLinkEvents } from "./db";
 import { renderDashboard, renderEditPage, redirectToEdit, renderDomainsPage } from "./handlers";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, copyFileSync, realpathSync } from "node:fs";
-import { chmodSync, renameSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import pkg from "../package.json";
 import {
   normalizeSlug,
@@ -364,17 +361,18 @@ function resolveExecPath(value: string): string {
   if (value.startsWith("/$bunfs/")) {
     return process.argv[0] ?? value;
   }
-  let candidate = value;
-  if (!value.includes("/")) {
-    candidate = Bun.which(value) ?? value;
-    if (candidate === "bun" || candidate.endsWith("/bun")) {
-      candidate = Bun.which("golink") ?? candidate;
+  const execPath = process.execPath;
+  if (execPath) {
+    try {
+      return realpathSync(execPath);
+    } catch {
+      return execPath;
     }
   }
   try {
-    return realpathSync(candidate);
+    return realpathSync(value);
   } catch {
-    return candidate;
+    return value;
   }
 }
 
@@ -470,7 +468,7 @@ function checkForUpdates(options: {
   if (updated) {
     console.log("Update complete. Restarting...");
     const rawExec = process.argv[0] ?? "golink";
-    const execPath = resolveExecPath(rawExec);
+    const execPath = Bun.which("golink") ?? resolveExecPath(rawExec);
     const args = ["serve", ...process.argv.slice(2)];
     spawnSync(execPath, args, { stdio: "inherit" });
     process.exit(0);
@@ -505,57 +503,11 @@ function isNewerVersion(current: string, latest: string): boolean {
   return compareVersions(current, latest) < 0;
 }
 
-function updateBinary(repo: string, assetPrefix: string, tag: string, execPath: string): boolean {
-  const { os, arch, ok } = getPlatformInfo();
-  if (!ok) {
-    console.warn("Unsupported platform for auto-update.");
-    return false;
-  }
-
-  const filename = `${assetPrefix}-${os}-${arch}.zip`;
-  const url = `https://github.com/${repo}/releases/download/${tag}/${filename}`;
-  const tmpDir = join(tmpdir(), `golink-update-${Date.now()}`);
-  const zipPath = join(tmpDir, filename);
-
-  mkdirSync(tmpDir, { recursive: true });
-
-  const curlResult = spawnSync("curl", ["-fsSL", url, "-o", zipPath], { stdio: "inherit" });
-  if (curlResult.status !== 0) {
-    return false;
-  }
-
-  const unzipResult = spawnSync("unzip", ["-q", zipPath, "-d", tmpDir], { stdio: "inherit" });
-  if (unzipResult.status !== 0) {
-    return false;
-  }
-
-  const binaryName = os === "windows" ? `${assetPrefix}-windows-x64.exe` : `${assetPrefix}-${os}-${arch}`;
-  const src = join(tmpDir, binaryName);
-  const dest = execPath;
-
-  if (!existsSync(src)) {
-    return false;
-  }
-
-  const tempDest = `${dest}.new`;
-  copyFileSync(src, tempDest);
-  chmodSync(tempDest, 0o755);
-  renameSync(tempDest, dest);
-  return true;
-}
-
-function getPlatformInfo(): { os: string; arch: string; ok: boolean } {
-  const rawOs = process.platform;
-  const os = rawOs === "win32" ? "windows" : rawOs;
-
-  let arch = process.arch;
-  if (arch === "x64") arch = "x64";
-  if (arch === "arm64") arch = "arm64";
-
-  const combo = `${os}-${arch}`;
-  const ok = ["linux-x64", "linux-arm64", "darwin-arm64", "windows-x64"].includes(combo);
-
-  return { os, arch, ok };
+function updateBinary(repo: string, assetPrefix: string, tag: string, _execPath: string): boolean {
+  const installUrl = `https://raw.githubusercontent.com/${repo}/master/install`;
+  const command = `curl -fsSL ${installUrl} | bash -s -- --version ${tag}`;
+  const result = spawnSync("sh", ["-c", command], { stdio: "inherit" });
+  return result.status === 0;
 }
 
 function runSyncSys(): void {
