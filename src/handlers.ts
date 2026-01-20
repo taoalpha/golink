@@ -41,10 +41,12 @@ export function renderDashboard(domain: string, message: string): Response {
       const fullKey = `${domainText}/${displaySlugText}`;
       const editHref = `/_/edit/${encodeURIComponent(row.slug)}?domain=${encodeURIComponent(row.domain)}`;
       const showsDefault = row.is_template === 1 && isTemplateSlug(row.slug);
-      const targetHref = showsDefault && defaultText
-        ? defaultText
-        : editHref;
-      const dataLinkAttr = showsDefault && defaultText ? "" : " data-edit-link=\"1\"";
+      const targetHref = escapeHtml(
+        showsDefault
+          ? (row.default_url ?? editHref)
+          : row.url
+      );
+      const dataLinkAttr = "";
       const destination = defaultText && showsDefault
         ? `${urlText}<div class="hint">Default: ${defaultText}</div>`
         : urlText;
