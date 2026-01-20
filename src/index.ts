@@ -649,6 +649,19 @@ function trustTls(certPath: string): void {
   }
 }
 
+function hasHostEntry(content: string, domain: string): boolean {
+  const domainLower = domain.toLowerCase();
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const clean = line.split("#")[0]?.trim() ?? "";
+    if (!clean) continue;
+    const parts = clean.toLowerCase().split(/\s+/).filter(Boolean);
+    if (parts[0] !== "127.0.0.1") continue;
+    if (parts.slice(1).includes(domainLower)) return true;
+  }
+  return false;
+}
+
 function findMissingHosts(domains: string[]): string[] {
   const hostsPath = "/etc/hosts";
   if (!existsSync(hostsPath)) {
@@ -656,8 +669,7 @@ function findMissingHosts(domains: string[]): string[] {
   }
 
   const content = readFileSync(hostsPath, "utf8");
-  const lower = content.toLowerCase();
-  return domains.filter((domain) => !lower.includes(`127.0.0.1 ${domain.toLowerCase()}`));
+  return domains.filter((domain) => !hasHostEntry(content, domain));
 }
 
 function updateHosts(domains: string[]): void {
@@ -667,10 +679,7 @@ function updateHosts(domains: string[]): void {
   }
 
   const content = readFileSync(hostsPath, "utf8");
-  const lower = content.toLowerCase();
-  const missing = domains.filter(
-    (domain) => !lower.includes(`127.0.0.1 ${domain.toLowerCase()}`)
-  );
+  const missing = domains.filter((domain) => !hasHostEntry(content, domain));
 
   if (missing.length === 0) {
     console.log("/etc/hosts already contains all domains.");
