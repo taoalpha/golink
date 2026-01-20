@@ -1,242 +1,83 @@
-# Agent Instructions
+# PROJECT KNOWLEDGE BASE
 
-This repository is a minimal Bun + SQLite go-link service.
-Use this file to keep agentic changes safe, consistent, and low-risk.
+**Generated:** 2026-01-19 21:26:32 PST
+**Commit:** 350c94e
+**Branch:** master
 
-## Quick Context
+## OVERVIEW
+Minimal Bun + SQLite go-link service with a built-in admin UI.
+Runs TypeScript directly on Bun and ships as a single-binary release.
 
-| Aspect         | Value                                    |
-|----------------|------------------------------------------|
-| Runtime        | Bun (ESM, runs TS directly)              |
-| Database       | SQLite at `data/golinks.sqlite`          |
-| Entry point    | `src/index.ts`                           |
-| Handlers       | `src/handlers.ts`                        |
-| Utilities      | `src/utils.ts`                           |
-| DB schema      | `src/db.ts`                              |
-| Templates      | `src/templates/*.html`                   |
-| Tests          | None                                     |
-| Lint           | None configured                          |
-
-## Build / Run / Test Commands
-
-### Build
-- Run from source: Bun runs TypeScript directly.
-- Single binary: `bun run build:bin` outputs `dist/golink`.
-
-### Run (HTTP)
-```bash
-bun run src/index.ts
+## STRUCTURE
 ```
-Default port: 8787. Override with `PORT=<n>`.
-
-### Run (HTTPS, self-signed)
-```bash
-PORT=8443 TLS=1 bun run src/index.ts
+./
+├── src/            # server, handlers, db, utils, templates
+├── scripts/        # build binary script
+├── data/           # sqlite database file
+├── tls/            # self-signed certs
+├── dist/           # build artifacts
+├── .github/        # release workflow
+└── install         # installer script
 ```
 
-### Hot reload (development)
-```bash
-PORT=8443 TLS=1 bun --watch src/index.ts
-```
+## WHERE TO LOOK
+| Task | Location | Notes |
+|------|----------|-------|
+| CLI + server boot | `src/index.ts` | subcommands: `serve`, `sync-sys` |
+| Redirect resolution | `src/index.ts` | order-sensitive logic |
+| Admin UI rendering | `src/handlers.ts` | HTML templates + tables |
+| DB schema + queries | `src/db.ts` | implicit migrations at startup |
+| Template helpers | `src/utils.ts` | slug + template helpers |
+| Build binary | `scripts/build-bin.ts` | `bun build --compile` |
+| Release pipeline | `.github/workflows/release.yml` | tag-based releases |
+| Installer script | `install` | used by self-update |
 
-### Type check
+## CODE MAP
+| Symbol | Type | Location | Role |
+|--------|------|----------|------|
+| `runServe` | function | `src/index.ts` | Bun server boot + routing |
+| `handleAdmin` | function | `src/index.ts` | admin routes + form handlers |
+| `handleRedirect` | function | `src/index.ts` | exact/template/default redirects |
+| `runSyncSys` | function | `src/index.ts` | TLS + hosts sync |
+| `checkForUpdates` | function | `src/index.ts` | self-update via GitHub tags |
+| `getAllLinks` | function | `src/db.ts` | list links for dashboard |
+| `recordVisit` | function | `src/db.ts` | visit tracking |
+| `renderDashboard` | function | `src/handlers.ts` | dashboard HTML |
+| `renderEditPage` | function | `src/handlers.ts` | edit form HTML |
+| `renderDomainsPage` | function | `src/handlers.ts` | domain management HTML |
+| `templateToRegex` | function | `src/utils.ts` | template slug matcher |
+| `applyTemplate` | function | `src/utils.ts` | template URL expansion |
+
+## CONVENTIONS
+- Bun runs TypeScript directly; no dev build step.
+- Strict TypeScript, but unused checks are disabled in `tsconfig.json`.
+- No lint or test tooling configured.
+- Double quotes, 2-space indentation, no trailing semicolons.
+
+## ANTI-PATTERNS (THIS PROJECT)
+- Do not reorder redirect resolution logic in `handleRedirect`.
+- Never use `any`, `@ts-ignore`, or `@ts-expect-error`.
+- Do not swallow errors with empty `catch` blocks.
+- Avoid schema changes without guards in `src/db.ts`.
+- Avoid refactors during bugfixes; keep changes minimal.
+
+## UNIQUE STYLES
+- HTML templates use `{{key}}` placeholders only.
+- User-facing HTML must be escaped via `escapeHtml()`.
+- Links are scoped by domain from the request Host header.
+- Self-update + single-binary distribution is built-in.
+- `sync-sys` writes `/etc/hosts` and manages TLS certs.
+
+## COMMANDS
 ```bash
+bun run src/index.ts serve --no-tls --port 8787
+bun run src/index.ts serve --port 8443
+bun --watch src/index.ts serve --port 8443
+bun run build:bin
 bunx tsc --noEmit
 ```
-Uses strict mode per `tsconfig.json`.
 
-### Lint / Tests
-No lint configuration or tests present.
-
-## Architecture
-
-### Routing Order (CRITICAL)
-The redirect resolution in `handleRedirect()` is order-sensitive:
-1. **Exact match** — non-template slug matches exactly
-2. **Template match** — slug matches a `{param}` pattern
-3. **Template default** — visiting root of template uses `default_url`
-4. **Fallback** — redirect to edit page for unknown slugs
-
-**Do not reorder these checks without explicit request.**
-
-### Database Schema (in `src/db.ts`)
-
-```sql
--- Main links table
-links (
-  id INTEGER PRIMARY KEY,
-  domain TEXT NOT NULL DEFAULT 'go',
-  slug TEXT NOT NULL,
-  url TEXT NOT NULL,
-  default_url TEXT,           -- only used for template slugs
-  is_template INTEGER DEFAULT 0,
-  created_at TEXT,
-  updated_at TEXT,
-  UNIQUE(domain, slug)
-)
-
--- Visit tracking
-visits (domain, slug, link_slug, visit_type, created_at)
--- visit_type: "exact" | "template" | "default" | "miss"
-
--- Audit log
-link_events (domain, slug, event_type, url, default_url, created_at)
--- event_type: "create" | "update" | "delete"
-```
-
-### Multi-Domain Support
-- Domains are derived from the request Host header (e.g., `go`, `xx`).
-- All link data is scoped by `domain` in the database.
-- Default domain for existing data is `go`.
-- Expect separate link namespaces per domain.
-
-### Route Map
-
-| Method | Path            | Handler                     |
-|--------|-----------------|------------------------------|
-| GET    | `/`             | Redirect to `/_/`            |
-| GET    | `/_/`           | Dashboard                    |
-| GET    | `/_/edit/:slug` | Edit page                    |
-| GET    | `/_/domains`    | Domain manager               |
-| POST   | `/_/domains`    | Add domain                   |
-| POST   | `/_/save`       | Create/update link           |
-| POST   | `/_/delete`     | Delete link                  |
-| GET    | `/:slug`        | Redirect (or fallback edit)  |
-
-### Multi-Domain Support
-- Domains are derived from the request Host header (e.g., `go`, `xx`).
-- All link data is scoped by `domain` in the database.
-- Default domain for existing data is `go`.
-- A domains admin page at `/_/domains` lets you add new domains.
-- After adding a domain, update `/etc/hosts` to map it to `127.0.0.1`.
-- Expect separate link namespaces per domain.
-
-## Code Style Guidelines
-
-### General
-- Keep changes minimal and scoped to the request.
-- Avoid refactors during bugfixes.
-- Preserve existing behavior; do not change routing semantics.
-
-### Imports
-- Use explicit relative imports (`./db`, `./utils`).
-- Group imports: Bun/Node builtins first, then local modules.
-- Use `type` imports where applicable (`import type { X }`).
-
-### Formatting
-- 2-space indentation.
-- Double quotes for strings.
-- No trailing semicolons (match existing style).
-- Keep line length under 100 characters where reasonable.
-
-### Naming
-| Kind        | Convention                                 |
-|-------------|--------------------------------------------|
-| Functions   | camelCase, verb-first (e.g., `renderDashboard`) |
-| Types       | PascalCase (e.g., `LinkRow`, `VisitType`)  |
-| Constants   | UPPER_SNAKE for true constants only        |
-| Files       | lowercase `.ts` or `.html`                 |
-
-### Types
-- Strict TypeScript (`strict: true` in tsconfig).
-- **Never use** `any`, `@ts-ignore`, `@ts-expect-error`.
-- Prefer explicit types at module boundaries (exports).
-- Use union types for constrained values (e.g., `VisitType`).
-- Cast DB results with type assertions (e.g., `as LinkRow[]`).
-
-### Error Handling
-- Do not swallow errors silently (`catch {}` is forbidden).
-- Return explicit error messages for user-facing validation.
-- Always return `Response` objects from handlers.
-- Validate URLs with `new URL()` and check protocol.
-
-### Database
-- Use prepared queries: `db.query(...).run(...)` / `.get(...)` / `.all()`.
-- Keep schema changes minimal and backward compatible.
-- Do not introduce migrations unless explicitly requested.
-- Use `ON CONFLICT ... DO UPDATE` for upserts.
-
-### Templates
-- HTML templates live in `src/templates/`.
-- Use `{{key}}` placeholders only; no other templating syntax.
-- Escape user content via `escapeHtml()` from `utils.ts`.
-- Keep CSS inline in `<style>` blocks within HTML files.
-
-### HTML Templates: Existing Placeholders
-
-**dashboard.html**: `{{message}}`, `{{rows}}`, `{{missRows}}`, `{{eventRows}}`
-**edit.html**: `{{message}}`, `{{slug}}`, `{{url}}`, `{{defaultUrl}}`, `{{defaultUrlDisabled}}`, `{{defaultUrlHint}}`
-
-## Utility Functions (src/utils.ts)
-
-| Function           | Purpose                                      |
-|--------------------|----------------------------------------------|
-| `escapeHtml`       | Escape HTML special characters               |
-| `renderTemplate`   | Replace `{{key}}` placeholders               |
-| `normalizeSlug`    | Strip leading/trailing slashes               |
-| `isTemplateSlug`   | Check if slug contains `{param}`             |
-| `templateToRegex`  | Convert template slug to RegExp with groups  |
-| `templateRoot`     | Extract base path before first `{`           |
-| `applyTemplate`    | Substitute matched groups into URL template  |
-| `parseForm`        | Parse URL-encoded form body                  |
-
-## Verification Checklist
-
-After non-trivial changes, verify locally:
-
-- [ ] Server starts without errors
-- [ ] `/_/` dashboard loads and displays links
-- [ ] Create new link via `/_/edit/` works
-- [ ] Edit existing link works
-- [ ] Delete link works
-- [ ] Exact slug redirect works (e.g., `go/jira`)
-- [ ] Template redirect works (e.g., `go/pr/123`)
-- [ ] Template default works (e.g., `go/pr` with no param)
-- [ ] Unknown slug redirects to edit page
-- [ ] `bunx tsc --noEmit` passes
-
-## Safe Change Patterns
-
-- **New route**: Add to `handleAdmin()` with explicit method + path check.
-- **New helper**: Add to `src/utils.ts`, export explicitly.
-- **New UI text**: Update relevant `.html` template, keep placeholders minimal.
-- **New table/column**: Add migration check pattern (see `hasDefaultUrl` in db.ts).
-
-## Risky Changes (Avoid Unless Requested)
-
-- Changing DB schema without migration guards.
-- Rewriting template substitution logic.
-- Reordering redirect resolution rules.
-- Adding external dependencies.
-- Changing TLS/port configuration defaults.
-
-## Repository Rules
-
-### Cursor / Copilot Rules
-No Cursor or Copilot instruction files found.
-
-### Environment Variables
-
-| Variable       | Default                        | Description                |
-|----------------|--------------------------------|----------------------------|
-| `PORT`         | `8787`                         | Server port                |
-| `TLS`          | unset                          | Set to `1` for HTTPS       |
-| `TLS_CERT_PATH`| `./tls/cert.pem`               | TLS certificate path       |
-| `TLS_KEY_PATH` | `./tls/key.pem`                | TLS private key path       |
-| `HTTP_PORT`    | `80`                           | HTTP redirect port (TLS)   |
-
-## Quick Reference: Type Definitions
-
-```typescript
-// From src/db.ts
-type LinkRow = {
-  domain: string;
-  slug: string;
-  url: string;
-  default_url: string | null;
-  is_template: number;  // 0 or 1
-};
-
-type VisitType = "exact" | "template" | "default" | "miss";
-type LinkEventType = "create" | "update" | "delete";
-```
+## NOTES
+- SQLite lives at `data/golinks.sqlite`.
+- TLS defaults to port 443 when enabled without `--port`.
+- Templates are in `src/templates/` (dashboard, edit, domains).
