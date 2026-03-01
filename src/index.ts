@@ -27,7 +27,12 @@ if (subcommand === "sync-sys") {
 
 function runServe(argv: string[]): void {
   const cli = parseArgs(argv);
-  const shouldUseTls = !cli.noTls && (Bun.env.TLS ?? "1") !== "0";
+  const shouldUseTls = cli.noTls
+    ? false
+    : cli.tls
+      ? true
+      : (Bun.env.TLS ?? "0") !== "0";
+  const hostname = cli.host ?? Bun.env.HOST ?? "127.0.0.1";
   const port = Number(cli.port ?? Bun.env.PORT ?? (shouldUseTls ? "443" : "8787"));
   const modulePath = new URL(import.meta.url).pathname;
   const baseDir = modulePath.startsWith("/$bunfs/") ? process.cwd() : new URL("..", import.meta.url).pathname;
@@ -50,6 +55,7 @@ function runServe(argv: string[]): void {
   });
 
   Bun.serve({
+    hostname,
     port,
     tls: shouldUseTls
       ? {
@@ -76,6 +82,7 @@ function runServe(argv: string[]): void {
 
   if (shouldUseTls) {
     Bun.serve({
+      hostname,
       port: httpPort,
       fetch(request) {
         const url = new URL(request.url);
@@ -83,9 +90,9 @@ function runServe(argv: string[]): void {
         return Response.redirect(httpsUrl, 301);
       },
     });
-    console.log(`GoLinks running on https://localhost:${port} (HTTP redirect on port ${httpPort})`);
+    console.log(`GoLinks running on https://${hostname}:${port} (HTTP redirect on ${hostname}:${httpPort})`);
   } else {
-    console.log(`GoLinks running on http://localhost:${port}`);
+    console.log(`GoLinks running on http://${hostname}:${port}`);
   }
 }
 
@@ -100,7 +107,7 @@ function printHelp(): void {
 
   const version = pkg.version;
 
-  console.log(`${banner}GoLink v${version}\n\nUsage:\n  golink serve [options]\n  golink sync-sys\n\nOptions (serve):\n  --port <n>       Port to listen on (default: 443 or 8787 with --no-tls)\n  --no-tls         Disable TLS\n  --tls-cert <p>   TLS cert path (default: ./tls/cert.pem)\n  --tls-key <p>    TLS key path (default: ./tls/key.pem)\n  --http-port <n>  HTTP redirect port when TLS is enabled (default: 80)\n`);
+  console.log(`${banner}GoLink v${version}\n\nUsage:\n  golink serve [options]\n  golink sync-sys\n\nOptions (serve):\n  --host <name>    Hostname to bind (default: 127.0.0.1)\n  --port <n>       Port to listen on (default: 8787, or 443 with --tls)\n  --tls            Enable TLS\n  --no-tls         Disable TLS\n  --tls-cert <p>   TLS cert path (default: ./tls/cert.pem)\n  --tls-key <p>    TLS key path (default: ./tls/key.pem)\n  --http-port <n>  HTTP redirect port when TLS is enabled (default: 80)\n`);
 }
 
 async function handleAdmin(request: Request, pathname: string, domain: string): Promise<Response> {
@@ -309,23 +316,39 @@ function handleEventsClear(): Response {
 }
 
 function handleRedirect(pathname: string, domain: string): Response {
-  const slug = normalizeSlug(decodeURIComponent(pathname.slice(1)));
-  if (!slug) {
+  const normalizedPath = normalizeSlug(decodeURIComponent(pathname.slice(1)));
+  if (!normalizedPath) {
     return Response.redirect("/_/", 302);
+  }
+
+  let lookupDomain = domain;
+  let slug = normalizedPath;
+  const slashIndex = normalizedPath.indexOf("/");
+  if (slashIndex > 0) {
+    const prefixedDomain = normalizedPath.slice(0, slashIndex).toLowerCase();
+    const prefixedSlug = normalizeSlug(normalizedPath.slice(slashIndex + 1));
+    const hasLinksForDomain = db
+      .query("SELECT 1 as ok FROM links WHERE domain = ? LIMIT 1")
+      .get(prefixedDomain) as { ok: number } | undefined;
+
+    if (hasLinksForDomain && prefixedSlug) {
+      lookupDomain = prefixedDomain;
+      slug = prefixedSlug;
+    }
   }
 
   const exact = db
     .query("SELECT slug, url FROM links WHERE domain = ? AND slug = ? AND is_template = 0")
-    .get(domain, slug) as { slug: string; url: string } | undefined;
+    .get(lookupDomain, slug) as { slug: string; url: string } | undefined;
 
   if (exact?.url) {
-    recordVisit(domain, slug, exact.slug, "exact");
+    recordVisit(lookupDomain, slug, exact.slug, "exact");
     return Response.redirect(exact.url, 302);
   }
 
   const templates = db
     .query("SELECT slug, url, default_url FROM links WHERE domain = ? AND is_template = 1 ORDER BY slug ASC")
-    .all(domain) as Array<{ slug: string; url: string; default_url: string | null }>;
+    .all(lookupDomain) as Array<{ slug: string; url: string; default_url: string | null }>;
 
   for (const template of templates) {
     const regex = templateToRegex(template.slug);
@@ -336,7 +359,7 @@ function handleRedirect(pathname: string, domain: string): Response {
     if (match && match.groups) {
       const destination = applyTemplate(template.url, match.groups);
       if (destination) {
-        recordVisit(domain, slug, template.slug, "template");
+        recordVisit(lookupDomain, slug, template.slug, "template");
         return Response.redirect(destination, 302);
       }
     }
@@ -348,12 +371,12 @@ function handleRedirect(pathname: string, domain: string): Response {
       continue;
     }
     if (slug === root && template.default_url) {
-      recordVisit(domain, slug, template.slug, "default");
+      recordVisit(lookupDomain, slug, template.slug, "default");
       return Response.redirect(template.default_url, 302);
     }
   }
 
-  recordVisit(domain, slug, null, "miss");
+  recordVisit(lookupDomain, slug, null, "miss");
   return redirectToEdit(slug);
 }
 
@@ -377,14 +400,18 @@ function resolveExecPath(value: string): string {
 }
 
 function parseArgs(args: string[]): {
+  host?: string;
   port?: string;
+  tls?: boolean;
   noTls?: boolean;
   tlsCertPath?: string;
   tlsKeyPath?: string;
   httpPort?: string;
 } {
   const out: {
+    host?: string;
     port?: string;
+    tls?: boolean;
     noTls?: boolean;
     tlsCertPath?: string;
     tlsKeyPath?: string;
@@ -400,26 +427,40 @@ function parseArgs(args: string[]): {
       continue;
     }
     const [key, inlineValue] = arg.split("=");
-    const value = inlineValue ?? args[i + 1];
-    if (!inlineValue && value) {
-      i += 1;
-    }
+
+    const readValue = (): string | undefined => {
+      if (inlineValue !== undefined) {
+        return inlineValue;
+      }
+      const next = args[i + 1];
+      if (next && !next.startsWith("--")) {
+        i += 1;
+        return next;
+      }
+      return undefined;
+    };
 
     switch (key) {
+      case "--host":
+        out.host = readValue();
+        break;
       case "--port":
-        out.port = value;
+        out.port = readValue();
+        break;
+      case "--tls":
+        out.tls = true;
         break;
       case "--no-tls":
         out.noTls = true;
         break;
       case "--tls-cert":
-        out.tlsCertPath = value;
+        out.tlsCertPath = readValue();
         break;
       case "--tls-key":
-        out.tlsKeyPath = value;
+        out.tlsKeyPath = readValue();
         break;
       case "--http-port":
-        out.httpPort = value;
+        out.httpPort = readValue();
         break;
       default:
         break;
